@@ -1,6 +1,6 @@
 {
   "name": "@d0nj/dsh-websearch-multi",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Multi-provider web search and fetch backends for the DeepSeek Harness web capability seam (ctx.web).",
   "license": "MIT",
   "repository": {
@@ -13,6 +13,8 @@
     "deepseek-harness",
     "cordis",
     "web-search",
+    "search-fusion",
+    "metasearch",
     "tavily",
     "exa",
     "brave"

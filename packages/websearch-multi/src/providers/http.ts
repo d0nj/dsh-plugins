@@ -212,6 +212,7 @@ export type WebErrorCode =
   | 'WEB_ABORTED'
   | 'WEB_PROVIDER_ERROR'
   | 'WEB_PROVIDER_CREDENTIAL_MISSING'
+  | 'WEB_PROVIDER_UNAVAILABLE'
 
 /**
  * Build a provider error with its routable code and chained cause.
@@ -255,7 +256,7 @@ export function aborted(label: string, signal: AbortSignal | undefined): WebErro
  * @param signal - the caller's signal, if any.
  * @returns true when the caller has cancelled.
  */
-function cancelled(signal: unknown): boolean {
+export function cancelled(signal: unknown): boolean {
   return typeof signal === 'object' && signal !== null && (signal as { aborted?: unknown }).aborted === true
 }
 

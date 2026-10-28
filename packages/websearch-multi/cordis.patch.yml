@@ -1,11 +1,11 @@
-# Registers the multi-provider backends and selects one.
+# Registers the multi-provider backends, their combinations, and selects one.
 #
 # The `web` row is overridden rather than inserted: `web.searchProvider` must name
 # a provider, because the seam deliberately refuses to guess between several
-# usable ones (`WEB_PROVIDER_AMBIGUOUS`). Only `tavily` is selected here because
-# only `tavily` can be registered without a key being present first; to use a
-# different engine, add the same row to the profile's own cordis.patch.yml with
-# your provider id, which outranks this file.
+# usable ones (`WEB_PROVIDER_AMBIGUOUS`).
+#
+# To select a combo instead, set `web.searchProvider` to the combo's id in the
+# profile's own cordis.patch.yml, which outranks this file.
 - insert:
     - id: websearch-multi
       name: '@d0nj/dsh-websearch-multi'
@@ -25,3 +25,35 @@
           - searxng
           - mojeek
         fetchProviders: []
+
+        # Combined providers. Each registers under its own id, so it is selected
+        # with web.searchProvider exactly like a single backend.
+        #
+        # A member without a credential is skipped, which also makes a combo a
+        # fallback chain: it answers through whichever members are configured.
+        combos:
+          # Ranks a page higher the more backends returned it. Agreement is the
+          # most reliable cross-engine relevance signal, because these engines
+          # rank very differently from one another.
+          - id: consensus
+            label: Consensus web search
+            members: [tinyfish, tavily, exa, parallel]
+            merge: consensus
+
+          # Queries members in priority order and stops once enough sources
+          # exist, so the cheapest working engine answers and the rest are not
+          # billed for the same search.
+          - id: cheap
+            label: First backend that answers
+            members: [tinyfish, firecrawl, tavily]
+            merge: append
+            concurrent: false
+            stopAfterResults: 8
+
+          # Shuffles the merged pool, for exploring past the head of each
+          # engine's ranking. Seeded from the query, so replaying a turn cites
+          # the same pages.
+          - id: shuffled
+            label: Shuffled multi-engine search
+            members: [tinyfish, tavily, exa, brave, serper]
+            merge: random

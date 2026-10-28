@@ -28,6 +28,8 @@
 import { credentialRef, isCredentialRefName } from '@deepseek-ai/dsh-credentials'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import z from '@deepseek-ai/schemastery'
+import { CombinedSearchProvider, validateCombo } from './combined.js'
+import type { ComboSpec, ProviderLookup } from './combined.js'
 import { MultiFetchProvider, MultiSearchProvider } from './provider.js'
 import type { OptionsSource, ProviderOptions } from './provider.js'
 import { FETCH_ADAPTERS, isFetchProviderId } from './providers/fetch.js'
@@ -36,6 +38,7 @@ import type { FetchProviderId } from './providers/fetch.js'
 import type { SearchProviderId } from './providers/search.js'
 import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
 import type { Context } from '@deepseek-ai/cordis'
+import type { WebSearchProvider } from '@deepseek-ai/dsh-web'
 
 /** Cordis plugin name used by Loader diagnostics. */
 export const name = 'websearch-multi'
@@ -66,6 +69,49 @@ const ProviderOverride = z.object({
 })
 
 /**
+ * One combined provider's configuration.
+ *
+ * `members` are backend ids from `providers`, in priority order. `merge` decides
+ * how their results are combined; `concurrent` decides whether they are queried
+ * together or one after another.
+ */
+const ComboConfig = z.object({
+  id: z.string().description('Provider id the combo registers under. Must not collide with a backend id.'),
+  label: z.string().description('Display name used in diagnostics. Defaults to the id.'),
+  members: z.array(z.string()).description('Backend ids to fan out to, in priority order.'),
+  merge: z
+    .union([
+      z.const('consensus'),
+      z.const('round-robin'),
+      z.const('append'),
+      z.const('random'),
+    ])
+    .default('consensus')
+    .description(
+      'How results are combined. consensus ranks by how many backends returned a page; ' +
+        'round-robin takes the best of each in turn; append lists each backend whole in ' +
+        'priority order; random shuffles with a seed derived from the query.',
+    ),
+  concurrent: z
+    .boolean()
+    .default(true)
+    .description('Query members in parallel. False queries them in priority order and can stop early.'),
+  stopAfterResults: z
+    .number()
+    .step(1)
+    .min(1)
+    .description(
+      'With concurrent: false, stop once this many sources are collected. Ignored when concurrent.',
+    ),
+  snippetBudget: z
+    .number()
+    .step(1)
+    .min(1)
+    .default(600)
+    .description('Characters kept per merged snippet when several backends describe the same page.'),
+})
+
+/**
  * The per-provider override values, as the live config carries them.
  *
  * The optional fields accept `null` because a YAML key written without a value
@@ -90,6 +136,18 @@ export interface PluginConfig {
   providers: string[]
   fetchProviders: string[]
   overrides: Record<string, ProviderOverrideValues>
+  combos: ComboValues[]
+}
+
+/** One configured combination, as the config document carries it. */
+export interface ComboValues {
+  id: string
+  label?: string | null
+  members: string[]
+  merge: 'consensus' | 'round-robin' | 'append' | 'random'
+  concurrent: boolean
+  stopAfterResults?: number | null
+  snippetBudget?: number | null
 }
 
 /**
@@ -115,6 +173,12 @@ export const Config: z<PluginConfig> = z.object({
   overrides: z
     .dict(z.union([ProviderOverride, FirecrawlOverride]))
     .description('Per-provider endpoint and credential settings, keyed by provider id.'),
+  combos: z
+    .array(ComboConfig)
+    .description(
+      'Combined providers: each fans one query out to several backends and merges what they return. ' +
+        'A combo registers under its own id, so it is selected with web.searchProvider like any backend.',
+    ),
 })
 
 /**
@@ -178,12 +242,18 @@ export function apply(ctx: Context, config: PluginConfig): () => void {
   const logger = ctx.logger('websearch-multi')
   const options = (id: string): OptionsSource => () => resolveOptions(ctx, config, id)
 
+  // The providers this plugin registered, keyed by id, so a combo resolves its
+  // members to the same instances the seam holds rather than re-creating them.
+  const registered = new Map<string, WebSearchProvider>()
+
   for (const id of config.providers) {
     if (!isSearchProviderId(id)) {
       logger.warn('unknown search provider id "%s" in config.providers; ignoring it', id)
       continue
     }
-    disposers.push(ctx.web.registerSearchProvider(new MultiSearchProvider(id, options(id))))
+    const provider = new MultiSearchProvider(id, options(id))
+    registered.set(id, provider)
+    disposers.push(ctx.web.registerSearchProvider(provider))
   }
 
   for (const id of config.fetchProviders) {
@@ -192,6 +262,40 @@ export function apply(ctx: Context, config: PluginConfig): () => void {
       continue
     }
     disposers.push(ctx.web.registerFetchProvider(new MultiFetchProvider(id, options(id))))
+  }
+
+  // Members must be backends this plugin registered. The seam exposes no lookup
+  // for a provider registered by someone else, so a combo can only combine its
+  // own members; a combo naming a foreign id is reported at load rather than
+  // silently returning a shorter list.
+  const lookup: ProviderLookup = (id) => registered.get(id)
+
+  // Combos register after the backends so a member is always resolvable, and
+  // are validated together so a duplicate id is caught before anything mounts.
+  const comboIds = config.combos.map((combo) => combo.id)
+  for (const combo of config.combos) {
+    let spec: ComboSpec
+    try {
+      spec = validateCombo(
+        {
+          id: combo.id,
+          label: combo.label ?? undefined,
+          members: combo.members,
+          merge: combo.merge,
+          concurrent: combo.concurrent,
+          stopAfterResults: combo.stopAfterResults ?? undefined,
+          snippetBudget: combo.snippetBudget ?? undefined,
+        },
+        Object.keys(SEARCH_ADAPTERS),
+        comboIds,
+      )
+    } catch (error) {
+      // A bad combo must not take the whole plugin down: the individual
+      // backends still work, and the message names what to fix.
+      logger.error('ignoring combo "%s": %s', combo.id, error instanceof Error ? error.message : String(error))
+      continue
+    }
+    disposers.push(ctx.web.registerSearchProvider(new CombinedSearchProvider(spec, lookup)))
   }
 
   return () => {
