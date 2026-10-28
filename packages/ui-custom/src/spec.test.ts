@@ -22,6 +22,7 @@ import {
 import {
   clamp,
   correctFontSize,
+  familyNames,
   geometryTokens,
   isColor,
   isDensity,
@@ -253,6 +254,18 @@ describe('resolveCustomization', () => {
     const resolved = resolveCustomization(document())
     assert.equal(resolved.typography.fontSize, 14)
     assert.deepEqual(resolved.warnings, [])
+  })
+})
+
+describe('familyNames', () => {
+  it('keeps only concrete families, stripping quotes and generics', () => {
+    assert.deepEqual(familyNames('"JetBrainsMono NF", monospace'), ['JetBrainsMono NF'])
+    assert.deepEqual(familyNames('Inter, system-ui, sans-serif'), ['Inter'])
+    assert.deepEqual(familyNames(''), [])
+  })
+
+  it('treats a bare generic stack as needing no local match', () => {
+    assert.deepEqual(familyNames('monospace, system-ui'), [])
   })
 })
 

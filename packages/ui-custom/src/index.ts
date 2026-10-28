@@ -101,17 +101,10 @@ export const Config: ReturnType<typeof z.object> = z.object({
 })
 
 /**
- * The resolved config value.
- *
- * Fields are mutable and optional where the schema supplies defaults, matching
- * what `z.object` produces; nothing in this package mutates them.
- */
-/**
  * The parsed shape of this plugin's config.
  *
- * Each field is olatile in the schema, so the Host hands pply a
- * Volatile reference for it rather than a plain value; {@link toDocument}
- * unwraps either form.
+ * Each field is volatile in the schema, so the Host hands `apply` a Volatile
+ * reference rather than a plain value; {@link toDocument} unwraps either form.
  */
 export interface PluginConfig {
   basePreset?: string
@@ -170,10 +163,8 @@ export function toDocument(input: unknown): CustomizationDocument {
 /**
  * Host plugin body.
  *
- * The Host contributes no runtime behavior: the browser half owns the theme
- * override layer, and the settings service owns persistence. Returning nothing
- * keeps the mount a pure configuration declaration, so a profile can hold this
- * row without this process doing any work per session.
+ * The Host contributes nothing at runtime: the browser half owns the theme
+ * layer and fonts, and the settings service owns persistence.
  */
 export function apply(): void {}
 

@@ -15,6 +15,8 @@
  * @module @d0nj/dsh-ui-custom/panel
  */
 
+import { findHostedFont, hostedFamilies, loadHostedFont } from './hosted-fonts.js'
+
 /** One token row's editable state. */
 export interface TokenRowState {
   readonly name: string
@@ -122,6 +124,47 @@ function styles(): Record<string, Record<string, string | number>> {
       font: 'inherit',
       fontSize: 12,
     },
+    select: {
+      width: 260,
+      padding: '4px 6px',
+      borderRadius: 'var(--d0nj-radius-sm, 4px)',
+      border: '1px solid var(--dsw-alias-border-l1)',
+      background: 'var(--dsw-alias-bg-base)',
+      color: 'var(--dsw-alias-label-primary)',
+      font: 'inherit',
+      fontSize: 12,
+    },
+    fontStack: { display: 'flex', flexDirection: 'column', gap: 4, width: 260 },
+    fontRow: { gap: 18 },
+    combo: { position: 'relative', width: 260 },
+    listbox: {
+      position: 'absolute',
+      zIndex: 10,
+      top: '100%',
+      left: 0,
+      right: 0,
+      marginTop: 4,
+      maxHeight: 240,
+      overflowY: 'auto',
+      padding: 4,
+      borderRadius: 'var(--d0nj-radius-sm, 4px)',
+      border: '1px solid var(--dsw-alias-border-l2)',
+      // A popup over arbitrary content cannot inherit the surface behind it, so
+      // it paints the module fill; only the element's own list uses this literal.
+      background: 'var(--dsw-alias-bg-module-platform, var(--dsw-alias-bg-layer-1))',
+      boxShadow: 'var(--dsw-elevation-lv2, 0 4px 12px rgba(0, 0, 0, 0.2))',
+    },
+    option: {
+      padding: '4px 6px',
+      borderRadius: 'var(--d0nj-radius-sm, 4px)',
+      fontSize: 12,
+      color: 'var(--dsw-alias-label-primary)',
+      cursor: 'pointer',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    },
+    optionActive: { background: 'var(--dsw-alias-interactive-bg-hover, var(--dsw-alias-bg-layer-2))' },
     colorInput: {
       width: 34,
       height: 26,
@@ -161,6 +204,54 @@ function styles(): Record<string, Record<string, string | number>> {
   }
 }
 
+/** Transient state of one font combobox, outside React so keystrokes are not lost. */
+interface ComboState {
+  open: boolean
+  query: string
+  active: number
+  /** Set by typing, so Enter does not repeat an already-written stack. */
+  written?: string | undefined
+}
+
+/**
+ * Combobox state per role.
+ *
+ * Kept at module scope because the panel re-renders on every settings echo, and
+ * state created inside the render would reset to closed each pass.
+ */
+const combos = new Map<string, ComboState>()
+
+/** Exported so tests do not inherit an open list between cases. */
+export function resetCombos(): void {
+  combos.clear()
+}
+
+/**
+ * @param key - the role's accessible label.
+ * @returns the state for that role, created on first use.
+ */
+function comboState(key: string): ComboState {
+  const existing = combos.get(key)
+  if (existing !== undefined) return existing
+  const created: ComboState = { open: false, query: '', active: 0 }
+  combos.set(key, created)
+  return created
+}
+
+/**
+ * Fonts offered by the picker.
+ *
+ * Hosted rather than local: a browser cannot enumerate installed fonts without a
+ * permission-gated API most lack, and a local family looks different elsewhere.
+ */
+let fontChoiceCache: string[] | undefined
+
+/** @returns the families the picker offers. */
+function fontChoices(): string[] {
+  fontChoiceCache ??= hostedFamilies()
+  return fontChoiceCache
+}
+
 /**
  * Render the Theme Studio page.
  *
@@ -190,6 +281,140 @@ export function ThemeStudio(
   const [localTokens, setLocalTokens] = React.useState<Record<string, { light: string; dark: string }>>({})
   const [localGeometry, setLocalGeometry] = React.useState(state.geometry)
   const [localTypography, setLocalTypography] = React.useState(state.typography)
+  // The counter must keep changing: writing the same number makes React bail out.
+  const [renderTick, setRender] = React.useState(0)
+  const choices = fontChoices()
+  const rerender = (): void => setRender(renderTick + 1)
+
+  /**
+   * @param role - font role being changed.
+   * @param value - CSS stack to apply.
+   */
+  const applyFont = (role: 'text' | 'code' | 'terminal', value: string): void => {
+    const hosted = findHostedFont(value)
+    if (hosted === undefined) {
+      actions.setFont(role, value)
+      return
+    }
+    void loadHostedFont(hosted).then(() => actions.setFont(role, value))
+  }
+
+  /**
+   * @param ariaLabel - accessible name for the input.
+   * @param family - current stack.
+   * @param onChange - writes the chosen stack.
+   * @returns the combobox element.
+   */
+  const fontCombo = (ariaLabel: string, family: string, onChange: (value: string) => void): unknown => {
+    const combo = comboState(ariaLabel)
+    // Not the word "Default", which could collide with a family of that name.
+    const DEFAULT_CHOICE = '\u0000default'
+    const isDefault = (choice: string): boolean => choice === DEFAULT_CHOICE
+    const matches = (): string[] => {
+      const query = combo.query.trim().toLowerCase()
+      if (query === '') return [DEFAULT_CHOICE, ...choices.slice(0, 39)]
+      const filtered = choices.filter((choice) => choice.toLowerCase().includes(query))
+      const keepDefault = 'default (built-in)'.includes(query) || 'built-in'.includes(query)
+      return (keepDefault ? [DEFAULT_CHOICE, ...filtered] : filtered).slice(0, 40)
+    }
+    const commit = (value: string): void => {
+      combo.open = false
+      combo.query = ''
+      combo.active = 0
+      const next = isDefault(value) ? '' : value
+      if (next !== combo.written) onChange(next)
+      combo.written = undefined
+      rerender()
+    }
+    const visible = combo.open ? matches() : []
+    return h(
+      'div',
+      { style: s.combo },
+      h('input', {
+        type: 'text',
+        role: 'combobox',
+        style: s.select,
+        'aria-label': ariaLabel,
+        'aria-expanded': combo.open,
+        'aria-autocomplete': 'list',
+        placeholder: 'Default (built-in stack)',
+        value: family,
+        onFocus: (event: { target: { value: string; select?: () => void } }) => {
+          combo.open = true
+          combo.query = ''
+          combo.active = 0
+          event.target.select?.()
+          rerender()
+        },
+        onInput: (event: { target: { value: string } }) => {
+          combo.open = true
+          combo.query = event.target.value
+          combo.active = 0
+          combo.written = event.target.value
+          onChange(event.target.value)
+          rerender()
+        },
+        onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+          const list = visible
+          if (event.key === 'Escape') {
+            combo.open = false
+            combo.query = ''
+            rerender()
+            return
+          }
+          if (event.key === 'ArrowDown' && list.length > 0) {
+            event.preventDefault()
+            combo.active = (combo.active + 1) % list.length
+            rerender()
+            return
+          }
+          if (event.key === 'ArrowUp' && list.length > 0) {
+            event.preventDefault()
+            combo.active = (combo.active - 1 + list.length) % list.length
+            rerender()
+            return
+          }
+          if (event.key === 'Enter') {
+            const picked = list[combo.active]
+            if (combo.open && picked !== undefined) commit(picked)
+            else if (combo.open && combo.query.trim() !== '') commit(combo.query.trim())
+          }
+        },
+        onBlur: () => {
+          combo.open = false
+          combo.query = ''
+          rerender()
+        },
+      }),
+      combo.open && visible.length > 0
+        ? h(
+            'div',
+            { style: s.listbox, role: 'listbox' },
+            ...visible.map((choice, index) =>
+              h(
+                'div',
+                {
+                  key: choice,
+                  role: 'option',
+                  'aria-selected': index === combo.active,
+                  style: {
+                    ...s.option,
+                    ...(isDefault(choice) ? {} : { fontFamily: `"${choice}"` }),
+                    ...(index === combo.active ? s.optionActive : {}),
+                  },
+                  // Fires before the input's blur, which would close the list first.
+                  onMouseDown: (event: { preventDefault: () => void }) => {
+                    event.preventDefault()
+                    commit(choice)
+                  },
+                },
+                isDefault(choice) ? 'Default (built-in stack)' : choice,
+              ),
+            ),
+          )
+        : null,
+    )
+  }
 
   /** The preset currently selected, for filling a missing mode from its colours. */
   const basePreset = presets.find((preset) => preset.id === (localPreset ?? state.basePreset))
@@ -331,23 +556,17 @@ export function ThemeStudio(
     label: string,
     family: string,
     size: number,
-  ): unknown =>
-    h(
+  ): unknown => {
+    const edit = (value: string): void => {
+      const key = role === 'text' ? 'textFontFamily' : role === 'code' ? 'codeFontFamily' : 'terminalFontFamily'
+      setLocalTypography({ ...(localTypography ?? state.typography), [key]: value })
+      applyFont(role, value)
+    }
+    return h(
       'div',
-      { style: s.row },
+      { style: { ...s.row, ...s.fontRow } },
       h('div', { style: s.rowLabel }, h('span', { style: { fontSize: 12, fontWeight: 600 } }, label)),
-      h('input', {
-        style: { ...s.input, width: 260 },
-        type: 'text',
-        'aria-label': `${label} font stack`,
-        placeholder: 'Font family, fallback, sans-serif',
-        value: family,
-        onChange: (event: { target: { value: string } }) => {
-          const key = role === 'text' ? 'textFontFamily' : role === 'code' ? 'codeFontFamily' : 'terminalFontFamily'
-          setLocalTypography({ ...(localTypography ?? state.typography), [key]: event.target.value })
-          actions.setFont(role, event.target.value)
-        },
-      }),
+      fontCombo(`${label} font family`, family, edit),
       h(
         'div',
         { style: s.row2 },
@@ -368,6 +587,7 @@ export function ThemeStudio(
         h('span', { style: s.hint }, 'px'),
       ),
     )
+  }
 
   return h(
     'div',

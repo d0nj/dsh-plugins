@@ -72,6 +72,14 @@ export interface ResolvedCustomization {
 /** A colour in one of the forms the theme service and browsers accept. */
 const COLOR_PATTERN = /^(#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|hsl|oklch|lab|lch|color)\([^)]*\)|[a-z]+)$/iu
 
+/** CSS generic families, which always resolve and so never need a local match. */
+const GENERIC_FAMILIES = new Set([
+  'serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'system-ui',
+  'ui-serif', 'ui-sans-serif', 'ui-monospace', 'ui-rounded', 'emoji', 'math',
+  'fangsong', '-apple-system', 'blinkmacsystemfont',
+  'inherit', 'initial', 'unset',
+])
+
 /**
  * Whether a value is a plausible CSS colour.
  *
@@ -142,6 +150,17 @@ export function correctFontSize(role: FontRole, px: number): number {
  */
 export function isDensity(value: string): value is Density {
   return (DENSITIES as readonly string[]).includes(value)
+}
+
+/**
+ * @param stack - comma-separated font stack.
+ * @returns the concrete family names, in order, without generics.
+ */
+export function familyNames(stack: string): string[] {
+  return stack
+    .split(',')
+    .map((part) => part.trim().replace(/^["']|["']$/gu, '').trim())
+    .filter((name) => name !== '' && !GENERIC_FAMILIES.has(name.toLowerCase()))
 }
 
 /**
