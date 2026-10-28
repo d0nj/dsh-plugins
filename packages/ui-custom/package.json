@@ -1,6 +1,6 @@
 {
   "name": "@d0nj/dsh-ui-custom",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Theme, colour-token, typography and geometry customisation for the DeepSeek Harness Web UI, with presets and a live editor.",
   "license": "MIT",
   "repository": {
