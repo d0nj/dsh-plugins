@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Multi-Provider Web Search",
+    "description": "Adds Tavily, Exa, Parallel, TinyFish, Firecrawl, Linkup, Brave, Kagi, Perplexity, Serper, Jina, SearXNG and Mojeek as web_search backends, plus Tavily, Exa, Firecrawl and Jina as web_fetch backends. Pick the active engine through the web service's provider settings."
+  }
+}

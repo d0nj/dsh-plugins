@@ -1,0 +1,61 @@
+name: CI
+
+# Verifies every push and pull request: build, typecheck, test, and a syntax
+# check over the emitted entry points. The publish workflow repeats the tests
+# before uploading, so this one is the fast feedback loop, not the release gate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Use pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.8.2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.14.0
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Turbo caches by input hash across the workspace, so a change to one
+      # package re-runs only that package and its dependents.
+      - name: Build, typecheck, test, check
+        run: pnpm exec turbo run build typecheck test check
+
+      - name: Verify publishable contents
+        # Catches a `files` entry that omits something a consumer needs, such as
+        # the bundle patch or the built entry point: the tarball would install and
+        # then fail to load.
+        run: |
+          set -euo pipefail
+          for dir in packages/*/; do
+            [ -f "$dir/package.json" ] || continue
+            if grep -q '"private": *true' "$dir/package.json"; then
+              continue
+            fi
+            echo "::group::pack $dir"
+            (cd "$dir" && pnpm pack --dry-run 2>&1 | tail -n 30)
+            echo "::endgroup::"
+          done

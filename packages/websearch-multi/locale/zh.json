@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "多提供商网络搜索",
+    "description": "为 web_search 增加 Tavily、Exa、Parallel、TinyFish、Firecrawl、Linkup、Brave、Kagi、Perplexity、Serper、Jina、SearXNG 与 Mojeek 后端，并为 web_fetch 提供 Tavily、Exa、Firecrawl 与 Jina 后端。可在 web 服务的提供商设置中切换当前引擎。"
+  }
+}

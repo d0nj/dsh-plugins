@@ -1,0 +1,15 @@
+/**
+ * Type-check configuration for the package.
+ *
+ * Extends the build config, which supplies the target, module system, and
+ * strictness, and adds the tests. `tsc -p tsconfig.json --noEmit` therefore
+ * checks the tests as well as the sources, while `tsc -p tsconfig.build.json`
+ * emits only the shipped files.
+ */
+{
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}

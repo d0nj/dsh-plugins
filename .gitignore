@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-test/
+.turbo/
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# Local secrets; API keys belong in the dsh credential store, never here.
+.env
+.env.local*.tgz

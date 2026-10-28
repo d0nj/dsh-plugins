@@ -1,0 +1,109 @@
+name: Publish
+
+# Publishes on release tags only: `<package-name>@<version>`, for example
+# `@d0nj/dsh-websearch-multi@1.0.0`. The tag names the package and the version, so
+# a push to `main` never publishes and a tag can never release the wrong package.
+#
+#     git tag @d0nj/dsh-websearch-multi@1.0.0
+#     git push origin @d0nj/dsh-websearch-multi@1.0.0
+#
+# Authentication is OIDC trusted publishing, so no registry token is stored in
+# this repository. Two consequences shape the setup:
+#
+# 1. Trusted publishing CANNOT create a package (npm/cli#8544). The very first
+#    version of a new package must be published once with a token, from a
+#    maintainer machine: `pnpm publish --access public` after `npm login`.
+#    Only then does the package exist to attach a trusted publisher to.
+# 2. A newly created trusted publisher expires unless it completes a successful
+#    publish within 2 days, so configure it when the next release is actually
+#    ready, not in advance.
+#
+# On npmjs.com, for each package, set Packages -> <package> -> Settings ->
+# Trusted publishing to: GitHub Actions, user `d0nj`, repository `dsh-plugins`,
+# workflow filename `publish.yml`, environment blank (this job declares none).
+# After that, optionally set Publishing access to "Require two-factor
+# authentication and disallow tokens" so only this workflow can publish.
+
+on:
+  push:
+    tags:
+      - '@*/*@*'
+      - '*@*'
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # OIDC token exchange for trusted publishing
+
+jobs:
+  resolve:
+    name: Resolve "${{ github.ref_name }}"
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.tag.outputs.matrix }}
+      has-packages: ${{ steps.tag.outputs.has-packages }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The reachability check compares against origin/main.
+          fetch-depth: 0
+
+      - name: Use pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.8.2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.14.0
+
+      - name: Resolve the tag to a package
+        id: tag
+        # The tag is passed through the environment, not interpolated into the
+        # script, so a tag containing shell metacharacters cannot execute.
+        env:
+          TAG: ${{ github.ref_name }}
+        run: node scripts/resolve-release-tag.mjs --tag "$TAG"
+
+  publish:
+    name: Publish ${{ matrix.name }}@${{ matrix.version }}
+    needs: resolve
+    if: needs.resolve.outputs.has-packages == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Use pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.8.2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.14.0 # trusted publishing needs 22.14.0 or newer
+          package-manager-cache: false # an uncached install in a release build
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Tests run before the upload so a broken tag cannot reach the registry.
+      - name: Verify
+        run: pnpm exec turbo run build typecheck test check
+
+      - name: Publish ${{ matrix.name }}@${{ matrix.version }}
+        working-directory: ${{ matrix.dir }}
+        # No NODE_AUTH_TOKEN: the CLI detects the OIDC environment and exchanges
+        # the run's identity token for a short-lived credential. Provenance is
+        # attached automatically for a public package from a public repository.
+        run: pnpm publish --access public --no-git-checks

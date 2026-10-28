@@ -1,0 +1,27 @@
+# Registers the multi-provider backends and selects one.
+#
+# The `web` row is overridden rather than inserted: `web.searchProvider` must name
+# a provider, because the seam deliberately refuses to guess between several
+# usable ones (`WEB_PROVIDER_AMBIGUOUS`). Only `tavily` is selected here because
+# only `tavily` can be registered without a key being present first; to use a
+# different engine, add the same row to the profile's own cordis.patch.yml with
+# your provider id, which outranks this file.
+- insert:
+    - id: websearch-multi
+      name: '@d0nj/dsh-websearch-multi'
+      config:
+        providers:
+          - tavily
+          - exa
+          - parallel
+          - tinyfish
+          - firecrawl
+          - linkup
+          - brave
+          - kagi
+          - perplexity
+          - serper
+          - jina
+          - searxng
+          - mojeek
+        fetchProviders: []
