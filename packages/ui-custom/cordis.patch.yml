@@ -1,0 +1,22 @@
+# Contributes the customization document and its defaults.
+#
+# The browser half reads this row's namespace ("ui-custom") through the settings
+# client, so a choice made in Theme Studio persists here and survives a reload.
+# Selecting the preset below is a starting point, not a requirement: the panel
+# changes it through the same namespace.
+- insert:
+    - id: ui-custom
+      name: '@d0nj/dsh-ui-custom'
+      config:
+        basePreset: none
+        tokens: {}
+        typography:
+          textFontFamily: ''
+          codeFontFamily: ''
+          terminalFontFamily: ''
+          fontSize: 14
+          codeFontSize: 11
+          terminalFontSize: 13
+        geometry:
+          radius: 8
+          density: comfortable

@@ -9,6 +9,7 @@ Each package is a `dsh` bundle: it declares `dsh.bundle.patch` in its `package.j
 | Package | What it adds |
 |---|---|
 | [`@d0nj/dsh-websearch-multi`](packages/websearch-multi) | Thirteen `web_search` backends and four `web_fetch` backends behind the existing `ctx.web` seam. |
+| [`@d0nj/dsh-ui-custom`](packages/ui-custom) | Theme presets, colour tokens, typography and geometry for the Web UI, with a live editor. |
 
 ## Requirements
 

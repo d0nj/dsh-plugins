@@ -176,6 +176,21 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  packages/ui-custom:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: ~4.0.5
+        version: 4.0.5
+      '@deepseek-ai/schemastery':
+        specifier: ~3.18.5
+        version: 3.18.5
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.19.2
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   packages/websearch-multi:
     devDependencies:
       '@deepseek-ai/cordis':
