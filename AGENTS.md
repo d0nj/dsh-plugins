@@ -116,7 +116,7 @@ Caveats:
 - **Node ≥ 22** (CI pins `22.14.0`), **pnpm 12.8.2** (`packageManager` field, both workflows, lockfile v9).
 - **ESM only** — no CJS, no dual exports. `require()` of these packages fails.
 - Turborepo for ordering/caching only: no project references, no `tsc -b`; `tsBuildInfoFile` is inert (nothing sets `incremental`/`composite`).
-- Harness peers are RC-pinned (`@deepseek-ai/cordis ~4.0.5`, `schemastery ~3.18.5`, `dsh-* 0.2.1-rc.2`) and **duplicated into `devDependencies`** so `pnpm install` supplies real types. Keep both lists identical.
+- Harness peers are RC-pinned (`@deepseek-ai/cordis ~4.0.5`, `schemastery ~3.18.5`, `dsh-* 0.2.1-rc.5`) and **duplicated into `devDependencies`** so `pnpm install` supplies real types. Keep both lists identical.
 - No runtime third-party dependencies: Node globals (`fetch`, `URL`, `AbortSignal`) only.
 - Secrets live in the dsh credential store, never files. `.gitignore`'s last line fuses two patterns (`.env.local*.tgz`), so `*.tgz` and `.env.local` are *not* ignored.
 - Release: `git tag @d0nj/dsh-<pkg>@<version> && git push origin <tag>`. The first publish of a **new** package must be manual (trusted publishing cannot create a package).
