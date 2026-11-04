@@ -39,9 +39,26 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # The local cache is keyed by task input hash, so restoring it across runs
+      # turns an unchanged package into a replay. `.turbo/cache` is the artifact
+      # store only; `.turbo` also holds auth cookies and daemon state.
+      - name: Restore the Turborepo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
       # Turbo caches by input hash across the workspace, so a change to one
-      # package re-runs only that package and its dependents.
+      # package re-runs only that package and its dependents. `TURBO_TOKEN` and
+      # `TURBO_TEAM` switch on Remote Cache when both repository secrets exist;
+      # with neither set turbo reports "Remote caching disabled" and uses the
+      # restored local cache, so CI is faster either way.
       - name: Build, typecheck, test, check
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
         run: pnpm exec turbo run build typecheck test check
 
       - name: Verify publishable contents
