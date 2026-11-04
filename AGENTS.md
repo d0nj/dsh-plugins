@@ -82,13 +82,10 @@ Caveats:
 - Root `dev:websearch-multi` is a one-shot build, not a watcher.
 
 Turbo caching:
-- The local cache is `.turbo/cache` (gitignored, content-addressed by task input hash). A second identical run is `>>> FULL TURBO`; a restored copy of that directory is enough for the hit, which is what CI relies on.
-- `ci.yml` restores `.turbo/cache` with `actions/cache` — key `turbo-<os>-<sha>`, restore prefix `turbo-<os>-` — then runs the same turbo command. Only `cache/` is cached: `.turbo` also holds auth cookies and daemon state.
-- Remote Cache switches on when the `TURBO_TOKEN` and `TURBO_TEAM` repository secrets exist; the step passes them unconditionally, and with neither set turbo prints `Remote caching disabled` and falls back to the restored local cache.
-- `pnpm dlx turbo login` is the interactive route (device code at `vercel.com/device`, then `turbo link` writes `.turbo/config.json`). It is not required: a token from `vercel.com/account/tokens` works from the environment alone — `TURBO_TOKEN` plus `TURBO_TEAM` (personal account: the username; team: the team slug, or `TURBO_TEAMID`). Locally, `turbo login --manual` pastes such a token. Secrets are set with `gh secret set TURBO_TOKEN` and `gh secret set TURBO_TEAM`; nothing is stored for `turbo login` until `%APPDATA%\turborepo\config.json` exists.
-- Hashing is content-based, not commit-based: a restored cache still hits after a commit that touches nothing it hashed.
-- `test` and `check` declare `outputs: []`, so a hit skips execution and replays the logs. That is only sound because the suites are offline and deterministic — a test that depends on wall-clock time, network, or machine state breaks the cache, not just the run.
-- Debug a miss with `pnpm exec turbo run <task> --dry=json` (compare `hash`) or `--force` (skip cache reads); cached task logs replay, so a hit still prints the output.
+- Local cache is `.turbo/cache`; CI restores it with `actions/cache` (key `turbo-<os>-<sha>`). Only `cache/` is cached — `.turbo` also holds auth cookies.
+- Remote Cache needs `TURBO_TOKEN` + `TURBO_TEAM` (`gh secret set …`, token from `vercel.com/account/tokens`). Without them turbo prints `Remote caching disabled`; `turbo login` is optional.
+- `test`/`check` declare `outputs: []`, so a hit skips execution and replays logs — only sound while those suites stay offline and deterministic.
+- Debug a miss with `pnpm exec turbo run <task> --dry=json` or `--force`.
 
 ## Code Conventions & Common Patterns
 

@@ -20,8 +20,6 @@ permissions:
 jobs:
   verify:
     name: Build and test
-    # Self-hosted runner label. It must exist on this repository, or the job
-    # waits for a runner forever: `gh api repos/d0nj/dsh-plugins/actions/runners`.
     runs-on: instabox-medium
     steps:
       - name: Checkout
@@ -41,13 +39,8 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # The local cache is keyed by task input hash, so restoring it across runs
-      # turns an unchanged package into a replay. `.turbo/cache` is the artifact
-      # store only; `.turbo` also holds auth cookies and daemon state.
       - name: Restore the Turborepo cache
         uses: actions/cache@v6
-        # Caching is an optimization: a cache-service outage, or a runner too old
-        # for this action's runtime, must not fail verification.
         continue-on-error: true
         with:
           path: .turbo/cache
@@ -55,11 +48,6 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-
 
-      # Turbo caches by input hash across the workspace, so a change to one
-      # package re-runs only that package and its dependents. `TURBO_TOKEN` and
-      # `TURBO_TEAM` switch on Remote Cache when both repository secrets exist;
-      # with neither set turbo reports "Remote caching disabled" and uses the
-      # restored local cache, so CI is faster either way.
       - name: Build, typecheck, test, check
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
