@@ -11,7 +11,7 @@
 import { spawn } from 'node:child_process'
 import type { ChildProcess } from 'node:child_process'
 import { mkdir, readFile, rm } from 'node:fs/promises'
-import { join, posix } from 'node:path'
+import { join, posix, win32 } from 'node:path'
 
 /** Where to look for a browser binary. */
 export interface ExecutableSearch {
@@ -66,32 +66,32 @@ export function executableCandidates(
   if (platform === 'win32') {
     for (const root of [env['ProgramFiles'], env['ProgramFiles(x86)'], env['LOCALAPPDATA']]) {
       if (root === undefined || root === '') continue
-      candidates.push(join(root, 'Google', 'Chrome', 'Application', 'chrome.exe'))
+      candidates.push(win32.join(root, 'Google', 'Chrome', 'Application', 'chrome.exe'))
     }
     for (const root of [env['LOCALAPPDATA'], env['ProgramFiles']]) {
       if (root === undefined || root === '') continue
-      candidates.push(join(root, 'Chromium', 'Application', 'chrome.exe'))
+      candidates.push(win32.join(root, 'Chromium', 'Application', 'chrome.exe'))
     }
-    const scoop = env['SCOOP'] ?? join(home, 'scoop')
+    const scoop = env['SCOOP'] ?? win32.join(home, 'scoop')
     candidates.push(
-      join(scoop, 'apps', 'chromium', 'current', 'chrome.exe'),
-      join(scoop, 'apps', 'googlechrome', 'current', 'chrome.exe'),
-      join(scoop, 'apps', 'brave', 'current', 'brave.exe'),
-      join(scoop, 'shims', 'chromium.exe'),
-      join(scoop, 'shims', 'chrome.exe'),
+      win32.join(scoop, 'apps', 'chromium', 'current', 'chrome.exe'),
+      win32.join(scoop, 'apps', 'googlechrome', 'current', 'chrome.exe'),
+      win32.join(scoop, 'apps', 'brave', 'current', 'brave.exe'),
+      win32.join(scoop, 'shims', 'chromium.exe'),
+      win32.join(scoop, 'shims', 'chrome.exe'),
     )
     const programData = env['ProgramData']
     if (programData !== undefined && programData !== '') {
-      candidates.push(join(programData, 'chocolatey', 'bin', 'chrome.exe'), join(programData, 'chocolatey', 'bin', 'chromium.exe'))
+      candidates.push(win32.join(programData, 'chocolatey', 'bin', 'chrome.exe'), win32.join(programData, 'chocolatey', 'bin', 'chromium.exe'))
     }
     for (const root of [env['ProgramFiles'], env['LOCALAPPDATA']]) {
       if (root === undefined || root === '') continue
-      candidates.push(join(root, 'BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'))
+      candidates.push(win32.join(root, 'BraveSoftware', 'Brave-Browser', 'Application', 'brave.exe'))
     }
     // Edge often ships with remote debugging disabled by policy, so it is tried last.
     for (const root of [env['ProgramFiles(x86)'], env['ProgramFiles'], env['LOCALAPPDATA']]) {
       if (root === undefined || root === '') continue
-      candidates.push(join(root, 'Microsoft', 'Edge', 'Application', 'msedge.exe'))
+      candidates.push(win32.join(root, 'Microsoft', 'Edge', 'Application', 'msedge.exe'))
     }
     return candidates
   }
