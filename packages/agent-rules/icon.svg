@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Binding agent rules">
+  <defs>
+    <linearGradient id="rule" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5c9df2"/>
+      <stop offset="1" stop-color="#8f5cf2"/>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="7" width="54" height="50" rx="10" fill="none" stroke="url(#rule)" stroke-width="2.6"/>
+  <path d="M16 21h16" stroke="url(#rule)" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M16 31h30" stroke="url(#rule)" stroke-width="2.6" stroke-linecap="round" opacity="0.75"/>
+  <path d="M16 41h20" stroke="url(#rule)" stroke-width="2.6" stroke-linecap="round" opacity="0.55"/>
+  <path d="M36 22l4 4 8-8" fill="none" stroke="#5c9df2" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="45" cy="45" r="6.4" fill="none" stroke="#8f5cf2" stroke-width="2.4"/>
+  <path d="M42.2 45.2l2.2 2.2 4-4.6" fill="none" stroke="#8f5cf2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

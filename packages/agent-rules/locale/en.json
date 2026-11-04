@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Binding Agent Rules",
+    "description": "Delivers the user-global AGENTS.md to every agent as a system-prompt section, so its rules carry system authority instead of reading as optional workspace guidance."
+  }
+}
