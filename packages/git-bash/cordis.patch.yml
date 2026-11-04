@@ -1,0 +1,24 @@
+# Adds Git Bash as a real `bash` tool on Windows, next to the shipped `pwsh` one.
+#
+# `ctx.shell` allows exactly one implementation per context: whichever executor
+# claims it decides the dialect of every shell tool in that composition. A group
+# with `isolate` therefore gives this plugin its own `shell` realm, so the
+# shipped PowerShell executor keeps the host-wide slot and its sandbox, while
+# the `bash` tool below runs Git Bash.
+#
+# The tool is the shipped `@deepseek-ai/dsh-tool-bash`, unchanged: job
+# registration, background execution, timeout promotion, DSH_* environment
+# injection, output spilling, and the model-facing rendering all come from it.
+# Only the executor underneath differs.
+- insert:
+    - id: git-bash
+      name: cordis:group
+      group: true
+      isolate:
+        shell: git-bash
+      disabled: !!js process.platform !== 'win32'
+      config:
+        - id: git-bash-executor
+          name: '@d0nj/dsh-git-bash'
+        - id: git-bash-tool
+          name: '@deepseek-ai/dsh-tool-bash'

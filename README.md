@@ -10,6 +10,8 @@ Each package is a `dsh` bundle: it declares `dsh.bundle.patch` in its `package.j
 |---|---|
 | [`@d0nj/dsh-websearch-multi`](packages/websearch-multi) | Thirteen `web_search` backends and four `web_fetch` backends behind the existing `ctx.web` seam. |
 | [`@d0nj/dsh-ui-custom`](packages/ui-custom) | Theme presets, colour tokens, typography and geometry for the Web UI, with a live editor. |
+| [`@d0nj/dsh-git-bash`](packages/git-bash) | A working `bash` tool on Windows, backed by Git Bash, beside the shipped `pwsh` tool. |
+| [`@d0nj/dsh-agent-rules`](packages/agent-rules) | `AGENTS.md` as binding system-prompt sections, replacing the advisory reminder that agents can talk themselves out of. |
 
 ## Requirements
 

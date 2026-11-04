@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Git Bash 终端",
+    "description": "在 Windows 上通过 Git Bash 运行 bash 工具：沿用自带的沙箱执行器、沙箱权限升级与后台任务，并提供 Git Bash 智能体预设，替代 Windows 默认选择的 PowerShell 工具。"
+  }
+}

@@ -8,6 +8,8 @@ Turborepo monorepo of [Cordis](https://cordis.js.org) bundles ("dsh plugins") fo
 |---|---|---|
 | `@d0nj/dsh-websearch-multi` | `packages/websearch-multi` | [`packages/websearch-multi/AGENTS.md`](packages/websearch-multi/AGENTS.md) |
 | `@d0nj/dsh-ui-custom` | `packages/ui-custom` | [`packages/ui-custom/AGENTS.md`](packages/ui-custom/AGENTS.md) |
+| `@d0nj/dsh-git-bash` | `packages/git-bash` | [`packages/git-bash/AGENTS.md`](packages/git-bash/AGENTS.md) |
+| `@d0nj/dsh-agent-rules` | `packages/agent-rules` | [`packages/agent-rules/AGENTS.md`](packages/agent-rules/AGENTS.md) |
 
 Read the package file before touching that package's `src/`. This file covers only what is shared.
 

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Git Bash Shell",
+    "description": "Runs the bash tool through Git Bash on Windows: the shipped sandboxed executor, sandbox permission escalation, background jobs, and a Git Bash agent preset, replacing the PowerShell tool the Windows default selects."
+  }
+}
