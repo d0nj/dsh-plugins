@@ -12,6 +12,7 @@ Each package is a `dsh` bundle: it declares `dsh.bundle.patch` in its `package.j
 | [`@d0nj/dsh-ui-custom`](packages/ui-custom) | Theme presets, colour tokens, typography and geometry for the Web UI, with a live editor. |
 | [`@d0nj/dsh-git-bash`](packages/git-bash) | A working `bash` tool on Windows, backed by Git Bash, beside the shipped `pwsh` tool. |
 | [`@d0nj/dsh-agent-rules`](packages/agent-rules) | `AGENTS.md` as binding system-prompt sections, replacing the advisory reminder that agents can talk themselves out of. |
+| [`@d0nj/dsh-browser`](packages/browser) | A real Chrome window for the agent: the `browser` tool opens pages, reads them as numbered accessibility outlines, and clicks, types and scrolls by ref. |
 
 ## Requirements
 

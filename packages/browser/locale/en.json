@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Browser Use",
+    "description": "Gives the agent a real browser, headless by default: open a page, read it as a numbered accessibility tree, then click, type, scroll or screenshot by ref."
+  }
+}

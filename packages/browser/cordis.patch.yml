@@ -1,0 +1,11 @@
+# Registers the `browser` tool: one Chromium-family browser the agent drives
+# over the DevTools protocol, plus the prompt section that marks page text as data.
+#
+# The row is inserted at the composition root rather than into an agent preset,
+# so every preset sees the tool. The browser starts headless, on the first
+# browser call, with its own persistent profile directory, and stays alive until
+# the plugin is disposed; set `headless: false` to watch it or sign in, or
+# `cdpUrl` in the profile's own patch to attach to a browser already running.
+- insert:
+    - id: browser
+      name: '@d0nj/dsh-browser'
