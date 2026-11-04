@@ -13,7 +13,7 @@
  * @module @d0nj/dsh-git-bash/resolve
  */
 import { lstatSync } from 'node:fs'
-import { join } from 'node:path'
+import { win32 } from 'node:path'
 
 /** How the executable was chosen; surfaced in a diagnostic. */
 export type BashOrigin = 'config' | 'environment' | 'install' | 'path'
@@ -25,11 +25,17 @@ export interface ResolvedBash {
   readonly origin: BashOrigin
 }
 
-/** Relative locations of a Git for Windows shell below one install root. */
+/**
+ * Relative locations of a Git for Windows shell below one install root.
+ *
+ * Joining with `win32` rather than the host `join` is required: these are
+ * always Windows paths, and a POSIX host would otherwise emit
+ * `C:\Program Files/Git/bin/bash.exe`, which no probe can match.
+ */
 const BASH_SUFFIXES: readonly string[] = [
-  join('Git', 'bin', 'bash.exe'),
-  join('Git', 'usr', 'bin', 'bash.exe'),
-  join('Git', 'usr', 'bin', 'sh.exe'),
+  win32.join('Git', 'bin', 'bash.exe'),
+  win32.join('Git', 'usr', 'bin', 'bash.exe'),
+  win32.join('Git', 'usr', 'bin', 'sh.exe'),
 ]
 
 /** A spawnable-filesystem probe; narrowed so tests can supply one. */
@@ -54,7 +60,7 @@ export function installRoots(env: NodeJS.ProcessEnv): string[] {
   add(env.ProgramFiles)
   add(env.ProgramW6432)
   add(env['ProgramFiles(x86)'])
-  add(env.LOCALAPPDATA === undefined ? undefined : join(env.LOCALAPPDATA, 'Programs'))
+  add(env.LOCALAPPDATA === undefined ? undefined : win32.join(env.LOCALAPPDATA, 'Programs'))
   return roots
 }
 
@@ -110,7 +116,7 @@ export function resolveBash(options: {
   if (platform === 'win32') {
     for (const root of installRoots(env)) {
       for (const suffix of BASH_SUFFIXES) {
-        const candidate = join(root, suffix)
+        const candidate = win32.join(root, suffix)
         if (candidateExists(candidate, probe)) return { executable: candidate, origin: 'install' }
       }
     }
