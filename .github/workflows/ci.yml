@@ -20,7 +20,9 @@ permissions:
 jobs:
   verify:
     name: Build and test
-    runs-on: ubuntu-latest
+    # Self-hosted runner label. It must exist on this repository, or the job
+    # waits for a runner forever: `gh api repos/d0nj/dsh-plugins/actions/runners`.
+    runs-on: instabox-medium
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -44,6 +46,9 @@ jobs:
       # store only; `.turbo` also holds auth cookies and daemon state.
       - name: Restore the Turborepo cache
         uses: actions/cache@v6
+        # Caching is an optimization: a cache-service outage, or a runner too old
+        # for this action's runtime, must not fail verification.
+        continue-on-error: true
         with:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-${{ github.sha }}
