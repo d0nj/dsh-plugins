@@ -1,6 +1,6 @@
 {
   "name": "@d0nj/dsh-browser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A real browser for DeepSeek Harness agents, headless by default: the `browser` tool navigates, reads the page as a numbered accessibility tree, and clicks, types and scrolls by ref.",
   "license": "MIT",
   "repository": {
@@ -54,20 +54,20 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-attachment": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-llm": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-tools": "0.2.1-rc.5",
-    "@deepseek-ai/schemastery": "~3.18.5"
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-attachment": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "~3.19.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-attachment": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-llm": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-tools": "0.2.1-rc.5",
-    "@deepseek-ai/schemastery": "~3.18.5",
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-attachment": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "~3.19.0",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0"
   }

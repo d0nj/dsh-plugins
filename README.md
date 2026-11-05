@@ -49,3 +49,15 @@ plugin_manager({ action: "install_bundle", target: "<absolute path to this repo>
 ```
 
 A linked directory install picks up rebuilt files, but the Host runs in-process, so a module change needs a restart before the new code loads.
+
+## Releasing
+
+Bump the package's `version` in `package.json` and merge to `main`. The publish workflow then verifies the workspace, uploads every manifest version the npm registry does not have yet, and creates the matching `<package>@<version>` tag. Pushing that tag by hand still works, and a push carrying no new version publishes nothing.
+
+Publishing uses npm OIDC trusted publishing, so no registry token is stored here. The first version of a new package still has to be published once by hand, because trusted publishing cannot create a package.
+
+## Dependency updates
+
+[`.github/renovate.json5`](.github/renovate.json5) groups the Harness packages into a single "DeepSeek Harness" pull request and rewrites `peerDependencies` together with `devDependencies`. That pairing matters: the Host refuses to load a bundle whose declared `dsh-*` peers do not satisfy its own version, and [Dependabot does not update `peerDependencies`](https://github.com/dependabot/dependabot-core/issues/1242) at all.
+
+The config only runs once the [Renovate app](https://github.com/apps/renovate) is installed on this repository. Bump the package version in the pull request it opens; merging publishes the release.

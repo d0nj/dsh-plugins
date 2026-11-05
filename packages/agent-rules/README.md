@@ -77,6 +77,7 @@ pnpm --filter @d0nj/dsh-agent-rules check
 
 ## Deps
 
-Peers (mirrored in `devDependencies`): `@deepseek-ai/cordis ~4.0.5`,
-`@deepseek-ai/dsh-system-prompt 0.2.1-rc.5`, `@deepseek-ai/schemastery ~3.18.5`.
+Peers (mirrored in `devDependencies`): `@deepseek-ai/cordis ~4.1.0`,
+`dsh-agent` / `dsh-system-prompt` / `dsh-working-directory` `^0.2.2-rc.1`,
+`@deepseek-ai/schemastery ~3.19.0`.
 No runtime third-party libraries — `node:fs`, `node:os`, and `node:path` only.

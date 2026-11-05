@@ -76,4 +76,4 @@ When adding a token or preset: add it to `spec.ts`, ensure the preset defines ev
 
 ## Deps
 
-Peers: `@deepseek-ai/cordis ~4.0.5`, `@deepseek-ai/schemastery ~3.18.5` (mirrored in `devDependencies`). The client-side services are declared in `dsh.client.inject` (`dsh-client-ui-theme`, `-ui-settings`, `-ui-slots`) and resolved from the Host's runtime module table — they are not npm dependencies. React is supplied by the loader.
+Peers: `@deepseek-ai/cordis ~4.1.0`, `@deepseek-ai/schemastery ~3.19.0` (mirrored in `devDependencies`). The client-side services are declared in `dsh.client.inject` (`dsh-client-ui-theme`, `-ui-settings`, `-ui-slots`) and resolved from the Host's runtime module table — they are not npm dependencies. React is supplied by the loader.

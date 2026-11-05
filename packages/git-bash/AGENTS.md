@@ -84,7 +84,7 @@ package) and `git-bash-tool` (`@deepseek-ai/dsh-tool-bash`).
 
 ## Deps
 
-Peers (mirrored in `devDependencies`): `@deepseek-ai/cordis ~4.0.5`,
-`dsh-bash-local` / `dsh-shell` / `dsh-subprocess` `0.2.1-rc.5`,
-`@deepseek-ai/schemastery ~3.18.5`. No runtime third-party libraries — `node:fs`
+Peers (mirrored in `devDependencies`): `@deepseek-ai/cordis ~4.1.0`,
+`dsh-bash-local` / `dsh-shell` / `dsh-subprocess` `^0.2.2-rc.1`,
+`@deepseek-ai/schemastery ~3.19.0`. No runtime third-party libraries — `node:fs`
 and `node:path` only.

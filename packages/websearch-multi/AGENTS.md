@@ -84,4 +84,4 @@ Patterns: `stubFetch(handler)` swaps `globalThis.fetch` and returns a restore fn
 
 ## Deps
 
-Peers (mirrored in `devDependencies` for types): `@deepseek-ai/cordis ~4.0.5`, `dsh-credentials` / `dsh-launch-environment` / `dsh-web` `0.2.1-rc.5`, `schemastery ~3.18.5`. No runtime third-party libraries — `fetch`/`URL`/`AbortSignal` only. Credentials resolve at call time via `ctx.get('credentials')`, falling back to `launchEnvironmentOf(ctx)`.
+Peers (mirrored in `devDependencies` for types): `@deepseek-ai/cordis ~4.1.0`, `dsh-credentials` / `dsh-launch-environment` / `dsh-web` `^0.2.2-rc.1`, `schemastery ~3.19.0`. No runtime third-party libraries — `fetch`/`URL`/`AbortSignal` only. Credentials resolve at call time via `ctx.get('credentials')`, falling back to `launchEnvironmentOf(ctx)`.

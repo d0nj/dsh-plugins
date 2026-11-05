@@ -83,4 +83,4 @@ Patterns: `ws-server.helper.ts` (excluded from `dist/` by `tsconfig.build.json`)
 
 ## Deps
 
-Peers (mirrored in `devDependencies` for types): `@deepseek-ai/cordis ~4.0.5`, `dsh-attachment` / `dsh-llm` / `dsh-system-prompt` / `dsh-tools` `0.2.1-rc.5`, `schemastery ~3.18.5`. Runtime imports are `@deepseek-ai/dsh-tools` (`defineTool`), `@deepseek-ai/dsh-attachment` (`AttachmentId`), `@deepseek-ai/schemastery`, and Node builtins (`node:http`, `node:crypto`, `node:child_process`) — no puppeteer, no playwright.
+Peers (mirrored in `devDependencies` for types): `@deepseek-ai/cordis ~4.1.0`, `dsh-attachment` / `dsh-llm` / `dsh-system-prompt` / `dsh-tools` `^0.2.2-rc.1`, `schemastery ~3.19.0`. Runtime imports are `@deepseek-ai/dsh-tools` (`defineTool`), `@deepseek-ai/dsh-attachment` (`AttachmentId`), `@deepseek-ai/schemastery`, and Node builtins (`node:http`, `node:crypto`, `node:child_process`) — no puppeteer, no playwright.

@@ -80,4 +80,4 @@ Catalog invariants, preset completeness across every token and both modes, resol
 
 ## Deps
 
-Peers: `@deepseek-ai/cordis ~4.0.5` and `@deepseek-ai/schemastery ~3.18.5`. The browser services (`dsh-client-ui-theme`, `-ui-settings`, `-ui-slots`) are supplied by the Host's runtime module table and are not npm dependencies. React arrives from the loader.
+Peers: `@deepseek-ai/cordis ~4.1.0` and `@deepseek-ai/schemastery ~3.19.0`. The browser services (`dsh-client-ui-theme`, `-ui-settings`, `-ui-slots`) are supplied by the Host's runtime module table and are not npm dependencies. React arrives from the loader.

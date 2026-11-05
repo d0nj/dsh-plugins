@@ -50,8 +50,8 @@ packages/<name>/
   tsconfig.build.json     → dist/   (excludes *.test.ts)
   tsconfig.test.json      → dist-test/ (includes everything, for tests)
   tsconfig.json           editor-only (--noEmit), referenced by no script
-scripts/                  repo-level tooling (release tag resolver)
-.github/workflows/        ci.yml (verify), publish.yml (tag → npm)
+scripts/                  repo-level tooling (release target resolver)
+.github/workflows/        ci.yml (verify), publish.yml (version bump → npm)
 ```
 
 ## Development Commands
@@ -118,17 +118,19 @@ Turbo caching:
 | `pnpm-workspace.yaml` | `packages/*` only — no `workspaces` field, so npm/yarn won't link |
 | `scripts/resolve-release-tag.mjs` | tag → publish matrix; rejects version mismatch and tags not on `origin/main` |
 | `.github/workflows/ci.yml` | `turbo run build typecheck test check` + `pnpm pack --dry-run` per non-private package |
-| `.github/workflows/publish.yml` | tag trigger, npm OIDC trusted publishing |
+| `.github/workflows/publish.yml` | publishes a version the registry lacks, then tags it; npm OIDC trusted publishing |
+| `.github/renovate.json5` | grouped `DeepSeek Harness` updates: rewrites `peerDependencies` and `devDependencies` together |
 
 ## Runtime / Tooling Preferences
 
 - **Node ≥ 22** (CI pins `22.14.0`), **pnpm 12.8.2** (`packageManager` field, both workflows, lockfile v9).
 - **ESM only** — no CJS, no dual exports. `require()` of these packages fails.
 - Turborepo for ordering/caching only: no project references, no `tsc -b`; `tsBuildInfoFile` is inert (nothing sets `incremental`/`composite`).
-- Harness peers are RC-pinned (`@deepseek-ai/cordis ~4.0.5`, `schemastery ~3.18.5`, `dsh-* 0.2.1-rc.5`) and **duplicated into `devDependencies`** so `pnpm install` supplies real types. Keep both lists identical.
+- Harness peers follow the runtime line (`@deepseek-ai/cordis ~4.1.0`, `schemastery ~3.19.0`, `dsh-* ^0.2.2-rc.1`) and are **duplicated into `devDependencies`** so `pnpm install` supplies real types. Keep both lists identical. Keep each `dsh-*` range inside the running Harness minor line: the Host skips any bundle whose declared `dsh-*` peers do not satisfy its own version, so an exact pin silently disables every plugin on the next Harness release.
 - No runtime third-party dependencies: Node globals (`fetch`, `URL`, `AbortSignal`) only.
 - Secrets live in the dsh credential store, never files. `.gitignore`'s last line fuses two patterns (`.env.local*.tgz`), so `*.tgz` and `.env.local` are *not* ignored.
-- Release: `git tag @d0nj/dsh-<pkg>@<version> && git push origin <tag>`. The first publish of a **new** package must be manual (trusted publishing cannot create a package).
+- Release: bump the package's `version` and merge to `main`; `publish.yml` publishes any manifest version the registry lacks and then creates the `<name>@<version>` tag. Pushing that tag by hand still releases. The first publish of a **new** package must be manual (trusted publishing cannot create a package).
+- Dependency updates come from Renovate, grouped as one `DeepSeek Harness` PR: it rewrites `peerDependencies` and `devDependencies` together, which Dependabot cannot do (dependabot-core#1242). Bump the package version in that PR; merging publishes it.
 
 ## Testing & QA
 

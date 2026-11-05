@@ -1,6 +1,6 @@
 {
   "name": "@d0nj/dsh-websearch-multi",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Multi-provider web search and fetch backends for the DeepSeek Harness web capability seam (ctx.web).",
   "license": "MIT",
   "repository": {
@@ -55,18 +55,18 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-credentials": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-launch-environment": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-web": "0.2.1-rc.5",
-    "@deepseek-ai/schemastery": "~3.18.5"
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-credentials": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-launch-environment": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-web": "^0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "~3.19.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "~4.0.5",
-    "@deepseek-ai/dsh-credentials": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-launch-environment": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-web": "0.2.1-rc.5",
-    "@deepseek-ai/schemastery": "~3.18.5",
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-credentials": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-launch-environment": "^0.2.2-rc.1",
+    "@deepseek-ai/dsh-web": "^0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "~3.19.0",
     "@types/node": "^24.0.0",
     "typescript": "^5.9.0"
   }

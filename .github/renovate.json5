@@ -1,0 +1,32 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: ['config:recommended', ':semanticCommits', 'schedule:weekly'],
+  labels: ['dependencies'],
+  rangeStrategy: 'replace',
+  prConcurrentLimit: 5,
+  lockFileMaintenance: {
+    enabled: true,
+  },
+  packageRules: [
+    {
+      // Dependabot does not update peerDependencies (dependabot-core#1242).
+      groupName: 'DeepSeek Harness',
+      matchPackageNames: ['/^@deepseek-ai\\//'],
+      matchDepTypes: ['peerDependencies', 'devDependencies'],
+      rangeStrategy: 'replace',
+      ignoreUnstable: false,
+      respectLatest: false,
+      separateMajorMinor: false,
+      separateMultipleMajor: false,
+      prPriority: 10,
+      commitMessageTopic: 'DeepSeek Harness',
+      semanticCommitType: 'fix',
+      semanticCommitScope: 'deps',
+    },
+    {
+      groupName: 'GitHub Actions',
+      matchManagers: ['github-actions'],
+      separateMajorMinor: false,
+    },
+  ],
+}
