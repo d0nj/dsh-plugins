@@ -1,6 +1,6 @@
 {
   "name": "@d0nj/dsh-agent-rules",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Delivers the user-global AGENTS.md to every agent as a binding system-prompt section instead of advisory workspace guidance.",
   "license": "MIT",
   "repository": {
