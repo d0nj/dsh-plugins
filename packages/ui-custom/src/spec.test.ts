@@ -209,6 +209,36 @@ describe('resolveCustomization', () => {
     })
   })
 
+  it('derives the composer surface and send-button accent from the preset', () => {
+    const resolved = resolveCustomization(document({ basePreset: 'dracula' }))
+    assert.deepEqual(
+      resolved.tokens['--dsw-specific-input-major'],
+      resolved.tokens['--dsw-alias-bg-layer-1'],
+    )
+    assert.deepEqual(
+      resolved.tokens['--dsw-alias-button-info-fill'],
+      resolved.tokens['--dsw-alias-brand-primary'],
+    )
+    assert.ok(resolved.tokens['--dsw-alias-button-info-hover']?.dark.startsWith('color-mix('))
+  })
+
+  it('moves the send-button accent with a brand override', () => {
+    const resolved = resolveCustomization(document({
+      basePreset: 'dracula',
+      tokens: { '--dsw-alias-brand-primary': { light: '#123456', dark: '#abcdef' } },
+    }))
+    assert.deepEqual(resolved.tokens['--dsw-alias-button-info-fill'], {
+      light: '#123456',
+      dark: '#abcdef',
+    })
+  })
+
+  it('adds no runtime aliases when no preset is selected', () => {
+    const resolved = resolveCustomization(document({ basePreset: 'none' }))
+    assert.equal(resolved.tokens['--dsw-specific-input-major'], undefined)
+    assert.equal(resolved.tokens['--dsw-alias-button-info-fill'], undefined)
+  })
+
   it('lets geometry win over a token of the same name', () => {
     const resolved = resolveCustomization(document({
       tokens: { '--d0nj-radius-md': { light: '99px', dark: '99px' } },

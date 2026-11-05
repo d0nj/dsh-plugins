@@ -39,6 +39,7 @@ scripts/stamp-client.mjs   rewrites tsc ESM output into the browser loader envel
 - **Both palette modes always travel together** (`{light, dark}`) — the runtime rejects a bare string.
 - **`apply` must never fail web boot.** `apply()` wraps `applyInner` in try/catch and degrades through `reportFailure`; the same guard applies to per-preset registration and panel mounting.
 - **Write only real changes.** Typography and token writes are settings mutations; compare before writing to avoid fighting the shipped Appearance rows.
+- **Runtime tokens follow the preset.** The composer surface and the send-button accent are painted with tokens no preset names, so `resolveCustomization` derives them from `bg-layer-1` and `brand-primary`; otherwise they keep the built-in colours and stick out of every theme.
 - **Disposal via `ctx.effect`.** `theme.register`, `overrideTokens`, `form.subscribe`, and the slot registration all return disposers; `slots` returns no-op.
 - `resolveCustomization` is lenient by warning, not by throwing: invalid colours/sizes/densities are dropped and surfaced in `warnings`.
 
@@ -66,7 +67,7 @@ cd packages/ui-custom && node --test dist-test/spec.test.js
 
 ## Tests
 
-`node:test` + `node:assert/strict` over `dist-test/`. `src/spec.test.ts` is the only suite (5 groups / 25 tests): token catalog invariants, preset completeness, `geometryTokens`, `resolveCustomization` merge/override/warning behaviour, clamping/validation helpers, and **WCAG contrast ratios computed in-test**.
+`node:test` + `node:assert/strict` over `dist-test/`. `src/spec.test.ts` is the only suite: token catalog invariants, preset completeness, `geometryTokens`, `resolveCustomization` merge/override/warning behaviour, clamping/validation helpers, and **WCAG contrast ratios computed in-test**.
 
 When adding a token or preset: add it to `spec.ts`, ensure the preset defines every `TOKEN_SPECS` name for both modes, and extend `spec.test.ts` if the invariant is new. Contrast assertions are the guard against unreadable defaults — keep them.
 

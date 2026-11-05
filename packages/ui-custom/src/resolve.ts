@@ -80,6 +80,12 @@ const GENERIC_FAMILIES = new Set([
   'inherit', 'initial', 'unset',
 ])
 
+/** Tokens the Client paints with that no preset names; each follows a documented token. */
+const RUNTIME_ALIASES: readonly (readonly [alias: string, source: string])[] = [
+  ['--dsw-specific-input-major', '--dsw-alias-bg-layer-1'],
+  ['--dsw-alias-button-info-fill', '--dsw-alias-brand-primary'],
+]
+
 /**
  * Whether a value is a plausible CSS colour.
  *
@@ -205,6 +211,19 @@ export function resolveCustomization(document: CustomizationDocument): ResolvedC
       continue
     }
     tokens[name] = { light, dark }
+  }
+
+  for (const [alias, source] of RUNTIME_ALIASES) {
+    const modes = tokens[source]
+    if (modes !== undefined) tokens[alias] = modes
+  }
+
+  const accent = tokens['--dsw-alias-button-info-fill']
+  if (accent !== undefined) {
+    tokens['--dsw-alias-button-info-hover'] = {
+      light: `color-mix(in srgb, ${accent.light} 85%, black)`,
+      dark: `color-mix(in srgb, ${accent.dark} 85%, white)`,
+    }
   }
 
   for (const [name, modes] of Object.entries(geometryTokens(document.geometry))) {
