@@ -9,3 +9,6 @@ dist-test/
 # Local secrets; API keys belong in the dsh credential store, never here.
 .env
 .env.local*.tgz
+
+# Local-only notes: research + specs the user asked never to commit.
+tmp/
