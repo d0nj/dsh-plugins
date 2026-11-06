@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
+import { HOSTED_FONTS } from './client/hosted-fonts.js'
 import { ThemeStudio, resetCombos } from './client/panel.js'
 import type { PanelActions, PanelState } from './client/panel.js'
 
@@ -204,6 +205,20 @@ describe('ThemeStudio font combobox', () => {
     handlers.onInput({ target: { value: 'Georgia' } })
     handlers.onKeyDown({ key: 'Enter', preventDefault: () => {} })
     assert.deepEqual(calls, ['font:text:Georgia'])
+  })
+
+  it('offers every hosted family when the list opens', () => {
+    resetCombos()
+    const { React, render } = shim()
+    const { actions } = recorder()
+    const state = panelState()
+    const input = combo(React, 'Code font family', state, actions)
+    ;(input.props.onFocus as (event: { target: { value: string } }) => void)({ target: { value: '' } })
+    const options = walk(render(ThemeStudio(React, { state, actions, presets: [] })))
+      .filter((node) => node.props.role === 'option')
+    assert.equal(options.length, HOSTED_FONTS.length + 1, 'the Default row plus the whole catalog')
+    const keys = new Set(options.map((node) => node.props.key))
+    for (const font of HOSTED_FONTS) assert.ok(keys.has(font.family), `${font.family} is not offered`)
   })
 
   it('offers Default first and clears the stack when it is picked', () => {

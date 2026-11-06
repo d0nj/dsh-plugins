@@ -10,7 +10,7 @@ The Harness ships one palette per mode. Restyling it otherwise means editing CSS
 
 - **15 presets**, each defined for both light and dark: Midnight, Paper, High contrast, Dracula, Nord, Catppuccin Mocha, Gruvbox, One Dark, Solarized, Rosé Pine, Tokyo Night, Ayu Dark, GitHub Dark, Monokai, Mono.
 - **14 colour tokens** — surfaces, borders, text, brand, and state colours — each overridable per mode.
-- **Typography** per role: interface/body, code, and the sidebar terminal, including font stacks and separate sizes.
+- **Typography** per role: interface/body, code, and the sidebar terminal, including 40 font families and separate sizes. Families load from our own mirror, not Google Fonts.
 - **Geometry**: corner radius (0–24 px) and spacing density (compact, comfortable, spacious).
 - **Theme Studio** panel with live preview, so changes apply without a restart.
 

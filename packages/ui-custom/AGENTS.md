@@ -14,6 +14,7 @@ src/spec.ts     (shared)   TOKEN_SPECS, PRESETS, FONT_ROLES, FONT_SIZE_RANGES, D
 src/resolve.ts  (shared)   resolveCustomization: preset → user overrides → geometry (pure, clamps, warns)
 src/client/index.ts        registers presets as themes, maintains ONE override layer, typography, panel
 src/client/panel.ts        Theme Studio view, hand-written React.createElement (no JSX)
+src/client/hosted-fonts.ts family catalog; loads one mirror stylesheet per pick
 scripts/stamp-client.mjs   rewrites tsc ESM output into the browser loader envelope at build time
 ```
 
@@ -24,6 +25,7 @@ scripts/stamp-client.mjs   rewrites tsc ESM output into the browser loader envel
 | `src/resolve.ts` | pure merge/clamp/warn | `resolveCustomization`, `geometryTokens`, `isColor`, `clamp`, `correctFontSize`, `isDensity`; types `CustomizationDocument`, `ResolvedCustomization`, `Geometry`, `Typography` |
 | `src/client/index.ts` | browser wiring | `apply`, `useReact`, `inject = ['theme','configForms','slots']`, `OVERRIDE_SOURCE`, `registerPanel`, `ThemeTokenOverrides` |
 | `src/client/panel.ts` | Theme Studio view + styles | `ThemeStudio`, `PanelState`, `PanelActions`, `TokenRowState` |
+| `src/client/hosted-fonts.ts` | font catalog + on-demand stylesheet loading | `HOSTED_FONTS`, `HostedFont`, `FontCategory`, `fontSlug`, `hostedFontUrl`, `loadHostedFont`, `hostedFamilies`, `findHostedFont` |
 
 ### Browser flow (`applyInner`, `src/client/index.ts`)
 
@@ -42,6 +44,7 @@ scripts/stamp-client.mjs   rewrites tsc ESM output into the browser loader envel
 - **Runtime tokens follow the preset.** The composer surface and the send-button accent are painted with tokens no preset names, so `resolveCustomization` derives them from `bg-layer-1` and `brand-primary`; otherwise they keep the built-in colours and stick out of every theme.
 - **Disposal via `ctx.effect`.** `theme.register`, `overrideTokens`, `form.subscribe`, and the slot registration all return disposers; `slots` returns no-op.
 - `resolveCustomization` is lenient by warning, not by throwing: invalid colours/sizes/densities are dropped and surfaced in `warnings`.
+- **Fonts come from our own mirror.** `HOSTED_FONTS` names families served by `cdn.jsdelivr.net/gh/d0nj/dsh-fonts@<tag>`; the tag is pinned in `CDN_BASE`, and a family is only loadable once the mirror carries it. Nothing is fetched from Google at runtime.
 
 ## Browser-Half Constraints (non-negotiable)
 

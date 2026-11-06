@@ -312,10 +312,10 @@ export function ThemeStudio(
     const isDefault = (choice: string): boolean => choice === DEFAULT_CHOICE
     const matches = (): string[] => {
       const query = combo.query.trim().toLowerCase()
-      if (query === '') return [DEFAULT_CHOICE, ...choices.slice(0, 39)]
+      if (query === '') return [DEFAULT_CHOICE, ...choices]
       const filtered = choices.filter((choice) => choice.toLowerCase().includes(query))
       const keepDefault = 'default (built-in)'.includes(query) || 'built-in'.includes(query)
-      return (keepDefault ? [DEFAULT_CHOICE, ...filtered] : filtered).slice(0, 40)
+      return keepDefault ? [DEFAULT_CHOICE, ...filtered] : filtered
     }
     const commit = (value: string): void => {
       combo.open = false

@@ -1,6 +1,6 @@
 /**
  * Pins the two things that break the picker silently: a duplicate family name,
- * and a stylesheet URL the CDN rejects.
+ * and a slug the mirror does not have a directory for.
  */
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
@@ -8,6 +8,7 @@ import { describe, it } from 'node:test'
 import {
   HOSTED_FONTS,
   findHostedFont,
+  fontSlug,
   hostedFamilies,
   hostedFontUrl,
   loadHostedFont,
@@ -34,19 +35,32 @@ describe('HOSTED_FONTS', () => {
   })
 })
 
+describe('fontSlug', () => {
+  it('lowercases and joins words with dashes', () => {
+    assert.equal(fontSlug('IBM Plex Mono'), 'ibm-plex-mono')
+    assert.equal(fontSlug('SF Mono'), 'sf-mono')
+    assert.equal(fontSlug('Inter'), 'inter')
+  })
+
+  it('produces a bare path segment for every family', () => {
+    for (const font of HOSTED_FONTS) {
+      assert.match(fontSlug(font.family), /^[a-z0-9-]+$/u, font.family)
+    }
+  })
+})
+
 describe('hostedFontUrl', () => {
-  it('encodes spaces as plus and requests weight 400 by default', () => {
+  it('addresses the mirror stylesheet of a family', () => {
     assert.equal(
       hostedFontUrl({ family: 'IBM Plex Mono', category: 'mono' }),
-      'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&display=swap',
+      'https://cdn.jsdelivr.net/gh/d0nj/dsh-fonts@v1.0.0/fonts/ibm-plex-mono/font.css',
     )
   })
 
-  it('joins explicit weights in ascending order', () => {
-    assert.equal(
-      hostedFontUrl({ family: 'Inter', category: 'sans', weights: [400, 600] }),
-      'https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap',
-    )
+  it('stays off Google Fonts', () => {
+    for (const font of HOSTED_FONTS) {
+      assert.doesNotMatch(hostedFontUrl(font), /googleapis|gstatic/u, font.family)
+    }
   })
 })
 
@@ -99,6 +113,6 @@ describe('loadHostedFont', () => {
     await loadHostedFont(font, document)
     await loadHostedFont(font, document)
     assert.equal(appended.length, 1, 'the same family must not be requested twice')
-    assert.match(appended[0]?.href ?? '', /family=Lora/u)
+    assert.match(appended[0]?.href ?? '', /fonts\/lora\/font\.css$/u)
   })
 })

@@ -1,5 +1,9 @@
 /**
- * Families fetched from a font CDN on demand.
+ * Families loaded on demand from our own font mirror.
+ *
+ * The mirror keeps every family out of Google's hands: the plugin loads one
+ * stylesheet per pick, and the stylesheet's `unicode-range` rules make the
+ * browser download only the subsets the page needs.
  *
  * @module @d0nj/dsh-ui-custom/hosted-fonts
  */
@@ -9,14 +13,18 @@ export type FontCategory = 'sans' | 'serif' | 'mono' | 'display'
 
 /** One hosted family this package can load. */
 export interface HostedFont {
-  /** CSS family name, exactly as the stylesheet declares it. */
+  /** CSS family name, exactly as the mirrored stylesheet declares it. */
   readonly family: string
   /** Grouping in the picker. */
   readonly category: FontCategory
-  /** Weights requested from the CDN; 400 is enough for body text. */
-  readonly weights?: readonly number[]
 }
 
+/**
+ * The catalog.
+ *
+ * A family added here is not loadable until the mirror carries it, so a new
+ * family means a new mirror tag and a new version of this package.
+ */
 export const HOSTED_FONTS: readonly HostedFont[] = [
   { family: 'Inter', category: 'sans' },
   { family: 'IBM Plex Sans', category: 'sans' },
@@ -38,6 +46,10 @@ export const HOSTED_FONTS: readonly HostedFont[] = [
   { family: 'Space Grotesk', category: 'sans' },
 
   { family: 'JetBrains Mono', category: 'mono' },
+  { family: 'Geist Mono', category: 'mono' },
+  { family: 'Victor Mono', category: 'mono' },
+  { family: 'MonoLisa', category: 'mono' },
+  { family: 'SF Mono', category: 'mono' },
   { family: 'Fira Code', category: 'mono' },
   { family: 'Source Code Pro', category: 'mono' },
   { family: 'IBM Plex Mono', category: 'mono' },
@@ -59,19 +71,25 @@ export const HOSTED_FONTS: readonly HostedFont[] = [
   { family: 'Instrument Serif', category: 'display' },
 ]
 
-const CDN_BASE = 'https://fonts.googleapis.com/css2'
+const CDN_BASE = 'https://cdn.jsdelivr.net/gh/d0nj/dsh-fonts@v1.0.0/fonts'
 
 /** Stylesheets outlive any one render, and a repeat request is a wasted round-trip. */
 const requested = new Set<string>()
+
+/**
+ * @param family - the family to address.
+ * @returns its directory name in the mirror.
+ */
+export function fontSlug(family: string): string {
+  return family.toLowerCase().replaceAll(' ', '-').replaceAll(/[^a-z0-9-]/gu, '')
+}
 
 /**
  * @param font - the family to request.
  * @returns an absolute stylesheet URL.
  */
 export function hostedFontUrl(font: HostedFont): string {
-  const name = font.family.trim().replace(/\s+/gu, '+')
-  const weights = (font.weights ?? [400]).join(';')
-  return `${CDN_BASE}?family=${name}:wght@${weights}&display=swap`
+  return `${CDN_BASE}/${fontSlug(font.family)}/font.css`
 }
 
 /**
