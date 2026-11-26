@@ -11,6 +11,7 @@ Turborepo monorepo of [Cordis](https://cordis.js.org) bundles ("dsh plugins") fo
 | `@d0nj/dsh-git-bash` | `packages/git-bash` | [`packages/git-bash/AGENTS.md`](packages/git-bash/AGENTS.md) |
 | `@d0nj/dsh-agent-rules` | `packages/agent-rules` | [`packages/agent-rules/AGENTS.md`](packages/agent-rules/AGENTS.md) |
 | `@d0nj/dsh-browser` | `packages/browser` | [`packages/browser/AGENTS.md`](packages/browser/AGENTS.md) |
+| `@d0nj/dsh-init` | `packages/init` | [`packages/init/AGENTS.md`](packages/init/AGENTS.md) |
 
 Read the package file before touching that package's `src/`. This file covers only what is shared.
 

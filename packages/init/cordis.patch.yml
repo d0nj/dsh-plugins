@@ -1,0 +1,10 @@
+# Adds `/init` to every composed command adapter.
+#
+# The handler sends the model no command: it appends one ordinary user message
+# carrying the survey brief and returns acknowledgement text, so `/init` behaves
+# like a prompt the user typed rather than like a tool the model was told to run.
+- insert:
+    - id: init
+      name: '@d0nj/dsh-init'
+      config:
+        fileName: AGENTS.md

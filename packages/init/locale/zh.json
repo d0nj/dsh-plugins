@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "初始化",
+    "description": "添加 /init 命令：勘察仓库并撰写或更新其 AGENTS.md。"
+  }
+}

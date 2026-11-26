@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Init",
+    "description": "Adds the /init command, which surveys the repository and writes or refreshes its AGENTS.md."
+  }
+}
