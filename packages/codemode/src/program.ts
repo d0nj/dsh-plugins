@@ -65,7 +65,7 @@ export async function runProgram(deps: ProgramDeps, args: RunCodeArgs, exec: Too
     parent: exec,
     log: deps.log,
   })
-  const functions: Record<string, PtcBindingFunction> = {}
+  const functions = Object.create(null) as Record<string, PtcBindingFunction>
   for (const entry of entries) functions[entry.name] = dispatcher.binding(entry.name)
   const bindings: PtcBindingNamespace[] = [
     { global: 'tools', functions, errorClass: { name: 'ToolCallError', memberNameProperty: 'toolName' } },
