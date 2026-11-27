@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Codemode",
+    "description": "Runs tool calls as one TypeScript program: a searchable catalog keeps the prompt small, and the tools you choose stay directly callable."
+  }
+}

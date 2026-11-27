@@ -1,0 +1,54 @@
+# Adds a `codemode` agent preset: one `run_code` program composes the tools of
+# the agent, a searchable catalog replaces the inlined tool SDK, and the tools
+# listed in the plugin's `direct` setting stay callable as normal tool calls.
+#
+# The preset is additive — `standard`, `ptc`, `minimal` and `cordis` are left
+# untouched — so a session opts in by selecting it. The profile's own patch
+# outranks this row, so a user edit of `preset-codemode` wins.
+- insert:
+    - id: preset-codemode
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: codemode
+        name: Codemode
+        description: Writes one program per turn; tools are called from inside it.
+        order: 5
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: You are a coding agent powered by the {{model}} model.
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+          - id: codemode
+            name: '@d0nj/dsh-codemode'

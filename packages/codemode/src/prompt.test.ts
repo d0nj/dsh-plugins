@@ -1,0 +1,59 @@
+import assert from 'node:assert/strict'
+import { describe, it } from 'node:test'
+
+import { buildCatalog } from './catalog.js'
+import { ONLY_INSTRUCTION, renderCatalog, renderSections } from './prompt.js'
+
+const TOOLS = [
+  { name: 'alpha', description: 'Alpha tool. Second sentence here.', parameters: { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] } },
+  { name: 'beta', description: 'Beta tool.', parameters: { type: 'object', properties: { b: { type: 'number' } } } },
+  { name: 'gamma', description: 'Gamma tool.', parameters: { type: 'object', properties: {} } },
+]
+
+const ENTRIES = buildCatalog(TOOLS, { pinned: ['beta'], direct: [], exclude: [] })
+
+describe('renderCatalog', () => {
+  it('inlines pinned signatures and lists the rest in hybrid mode', () => {
+    const text = renderCatalog(ENTRIES, 'hybrid', 24_000)
+    assert.match(text, /beta\(b\?: number\) => JsonValue/)
+    assert.match(text, /- alpha\(a: string\) => JsonValue — Alpha tool\./)
+    assert.match(text, /- gamma\(\) => JsonValue — Gamma tool\./)
+  })
+
+  it('inlines nothing but the index in search mode', () => {
+    const text = renderCatalog(ENTRIES, 'search', 24_000)
+    assert.doesNotMatch(text, /^beta\(b\?: number\)/m)
+    assert.match(text, /- beta\(b\?: number\) => JsonValue — Beta tool\./)
+  })
+
+  it('renders every signature in full mode', () => {
+    const text = renderCatalog(ENTRIES, 'full', 1)
+    assert.match(text, /alpha\(a: string\) => JsonValue/)
+    assert.match(text, /beta\(b\?: number\) => JsonValue/)
+  })
+
+  it('stops inlining pinned entries at the byte budget', () => {
+    const text = renderCatalog(ENTRIES, 'hybrid', 4)
+    assert.doesNotMatch(text, /^beta\(b\?: number\)/m)
+  })
+
+  it('states the empty case', () => {
+    assert.equal(renderCatalog([], 'hybrid', 100), 'No tools are bound to this program.')
+  })
+})
+
+describe('renderSections', () => {
+  it('prefixes the program rules and the catalog', () => {
+    const text = renderSections(ENTRIES, 'hybrid', 24_000)
+    assert.match(text, /## Writing code for run_code/)
+    assert.match(text, /await catalog\.search\(\{ query \}\)/)
+    assert.match(text, /### Catalog/)
+  })
+})
+
+describe('ONLY_INSTRUCTION', () => {
+  it('names the transport and the direct exception', () => {
+    assert.match(ONLY_INSTRUCTION, /`run_code` is the program transport/)
+    assert.match(ONLY_INSTRUCTION, /except the tools listed as directly callable/)
+  })
+})
