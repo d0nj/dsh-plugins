@@ -4,6 +4,11 @@ import type { CatalogMode } from './config.js'
 export const ONLY_INSTRUCTION =
   '`run_code` is the program transport: a tool call naming any other tool fails, except the tools listed as directly callable below. Reach every other tool from inside the program.'
 
+export function directInstruction(direct: readonly string[]): string {
+  if (direct.length === 0) return ONLY_INSTRUCTION
+  return `${ONLY_INSTRUCTION}\n\nCall ${direct.map(name => `\`${name}\``).join(', ')} directly, as a normal tool call rather than from inside a program.`
+}
+
 export const CALL_RULES = `## Writing code for run_code
 
 Execute one TypeScript program per call against the tools below. Takes \`code\` (the program body) and \`description\` (a short summary for the user).

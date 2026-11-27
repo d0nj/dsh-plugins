@@ -42,7 +42,7 @@ The bundle patch inserts one `preset-codemode` row. Select the **Codemode** pres
 |---|---|---|
 | `mode` | `hybrid` | `full` inlines every signature (PTC parity), `hybrid` inlines pinned and direct tools, `search` inlines none |
 | `pinned` | `[]` | tool names whose full signature is always inlined |
-| `direct` | `["ask_user_question", "exit_plan_mode"]` | tools that stay directly callable |
+| `direct` | `["ask_user_question", "exit_plan_mode", "skill"]` | tools that stay directly callable |
 | `exclude` | `[]` | tools programs may not call |
 | `maxInlineBytes` | `24000` | byte budget for inlined signatures |
 | `maxResultChars` | `50000` | rendered result budget |

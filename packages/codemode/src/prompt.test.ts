@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import { buildCatalog } from './catalog.js'
-import { ONLY_INSTRUCTION, renderCatalog, renderSections } from './prompt.js'
+import { ONLY_INSTRUCTION, directInstruction, renderCatalog, renderSections } from './prompt.js'
 
 const TOOLS = [
   { name: 'alpha', description: 'Alpha tool. Second sentence here.', parameters: { type: 'object', properties: { a: { type: 'string' } }, required: ['a'] } },
@@ -51,9 +51,12 @@ describe('renderSections', () => {
   })
 })
 
-describe('ONLY_INSTRUCTION', () => {
-  it('names the transport and the direct exception', () => {
-    assert.match(ONLY_INSTRUCTION, /`run_code` is the program transport/)
-    assert.match(ONLY_INSTRUCTION, /except the tools listed as directly callable/)
+describe('directInstruction', () => {
+  it('names the tools that stay direct', () => {
+    assert.match(directInstruction(['skill', 'ask_user_question']), /Call `skill`, `ask_user_question` directly/)
+  })
+
+  it('falls back to the bare rule without direct tools', () => {
+    assert.equal(directInstruction([]), ONLY_INSTRUCTION)
   })
 })

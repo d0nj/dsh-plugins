@@ -6,7 +6,7 @@ import { executeToolBatch, ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/
 import { buildCatalog } from './catalog.js'
 import type { CatalogEntry } from './catalog.js'
 import type { PluginConfig } from './config.js'
-import { ONLY_INSTRUCTION, renderSections } from './prompt.js'
+import { directInstruction, renderSections } from './prompt.js'
 import type { PtcRuntimePort } from './ptc.js'
 import { toCatalogTool } from './program.js'
 import { createRunCodeTransport } from './transport.js'
@@ -38,7 +38,7 @@ export class CodeModeExecutor implements ToolExecutor {
       maxResultChars: settings.maxResultChars,
     })
     this.sections = [
-      { name: 'tools:codemode-only', order: ctx.systemPrompt.getSectionOrder('PTC_ONLY'), text: ONLY_INSTRUCTION, interpolate: false },
+      { name: 'tools:codemode-only', order: ctx.systemPrompt.getSectionOrder('PTC_ONLY'), text: directInstruction([...this.#direct]), interpolate: false },
       {
         name: 'tools:codemode-catalog',
         order: ctx.systemPrompt.getSectionOrder('TOOLS_SDK'),
