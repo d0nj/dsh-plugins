@@ -25,7 +25,7 @@ export const Config: z<Partial<PluginConfig>, PluginConfig> = z.object({
   pinned: z.array(z.string()).default([]).description('Tool names whose full signature is always inlined.'),
   direct: z
     .array(z.string())
-    .default(['ask_user_question', 'exit_plan_mode', 'skill'])
+    .default(['ask_user_question', 'exit_plan_mode', 'skill', 'subagent', 'subagent_fork'])
     .description('Tool names that stay directly callable instead of being reached through `run_code`.'),
   exclude: z.array(z.string()).default([]).description('Tool names that programs may not call.'),
   maxInlineBytes: z.natural().default(24_000).description('Byte budget for inlined signatures.'),

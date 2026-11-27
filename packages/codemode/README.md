@@ -42,7 +42,7 @@ The bundle patch inserts one `preset-codemode` row. Select the **Codemode** pres
 |---|---|---|
 | `mode` | `hybrid` | `full` inlines every signature (PTC parity), `hybrid` inlines pinned and direct tools, `search` inlines none |
 | `pinned` | `[]` | tool names whose full signature is always inlined |
-| `direct` | `["ask_user_question", "exit_plan_mode", "skill"]` | tools that stay directly callable |
+| `direct` | `["ask_user_question", "exit_plan_mode", "skill", "subagent", "subagent_fork"]` | tools that stay directly callable |
 | `exclude` | `[]` | tools programs may not call |
 | `maxInlineBytes` | `24000` | byte budget for inlined signatures |
 | `maxResultChars` | `50000` | rendered result budget |
@@ -65,5 +65,6 @@ Arguments and results must be lossless JSON.
 ## Limits
 
 - `per-call` runtime mode gives the program a real Node process inside the OS sandbox: codemode is not itself a confinement boundary, so the session sandbox mode is what limits file and process access.
+- Delegation (`subagent`, `subagent_fork`) stays directly callable: a program can await one, but nested calls are exclusive, so there is no fan-out from a single program.
 - Image results from nested tools are not attached in this version.
 - Presentation is the generic execute card; the nested tree comes from the dispatch events.
