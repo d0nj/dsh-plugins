@@ -1,6 +1,6 @@
 {
   "name": "@d0nj/dsh-codemode",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Programmatic tool calling for DeepSeek Harness agents: one `run_code` program composes tool calls, discovers signatures on demand through a searchable catalog, and keeps chosen tools directly callable.",
   "license": "MIT",
   "repository": {
