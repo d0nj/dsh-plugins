@@ -10,13 +10,6 @@
       config:
         basePreset: none
         tokens: {}
-        typography:
-          textFontFamily: ''
-          codeFontFamily: ''
-          terminalFontFamily: ''
-          fontSize: 14
-          codeFontSize: 11
-          terminalFontSize: 13
         geometry:
           radius: 8
           density: comfortable

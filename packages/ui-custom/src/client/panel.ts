@@ -15,6 +15,9 @@
  * @module @d0nj/dsh-ui-custom/panel
  */
 
+import { DEFAULT_GEOMETRY, FONT_FAMILY_FIELDS, FONT_SIZE_FIELDS, FONT_SIZE_RANGES } from '../spec.js'
+import type { FontRole } from '../spec.js'
+import { clamp } from '../resolve.js'
 import { findHostedFont, hostedFamilies, loadHostedFont } from './hosted-fonts.js'
 
 /** One token row's editable state. */
@@ -26,6 +29,37 @@ export interface TokenRowState {
   readonly override?: { readonly light: string; readonly dark: string } | undefined
 }
 
+export interface PresetChoice {
+  readonly id: string
+  readonly label: string
+  readonly description: string
+  readonly colorScheme: 'light' | 'dark'
+  readonly tokens: Readonly<Record<string, { readonly light: string; readonly dark: string }>>
+}
+
+type SchemeFilter = 'all' | 'light' | 'dark'
+
+interface TypographyDraft {
+  textFontFamily: string
+  codeFontFamily: string
+  terminalFontFamily: string
+  fontSize?: number
+  codeFontSize?: number
+  terminalFontSize?: number
+}
+
+interface PreviewColors {
+  readonly base: string
+  readonly sidebar: string
+  readonly primary: string
+  readonly secondary: string
+  readonly accent: string
+  readonly error: string
+  readonly success: string
+  readonly warn: string
+  readonly border: string
+}
+
 /** Panel state handed in by the client apply. */
 export interface PanelState {
   readonly basePreset: string
@@ -34,9 +68,13 @@ export interface PanelState {
     readonly textFontFamily: string
     readonly codeFontFamily: string
     readonly terminalFontFamily: string
-    readonly fontSize: number
-    readonly codeFontSize: number
-    readonly terminalFontSize: number
+    readonly fontSize?: number
+    readonly codeFontSize?: number
+    readonly terminalFontSize?: number
+  }
+  readonly applied: {
+    readonly fontFamilies: Readonly<Record<string, string>>
+    readonly fontSizes: Readonly<Record<string, number>>
   }
   readonly geometry: { readonly radius: number; readonly density: string }
   readonly warnings: readonly string[]
@@ -48,8 +86,8 @@ export interface PanelActions {
   setPreset(id: string): void
   setToken(name: string, light: string, dark: string): void
   clearToken(name: string): void
-  setFont(role: 'text' | 'code' | 'terminal', value: string): void
-  setFontSize(role: 'text' | 'code' | 'terminal', px: number): void
+  setFont(role: FontRole, value: string): void
+  setFontSize(role: FontRole, px: number): void
   setRadius(px: number): void
   setDensity(density: string): void
   resetAll(): void
@@ -71,49 +109,88 @@ function styles(): Record<string, Record<string, string | number>> {
     hint: { fontSize: 12, color: 'var(--dsw-alias-label-secondary)', lineHeight: 1.5 },
     grid: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-      gap: 10,
+      gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+      gap: 12,
     },
-    card: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8,
-      padding: 10,
+    selectorTools: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
+    search: {
+      flex: '1 1 180px',
+      minWidth: 140,
+      padding: '6px 9px',
       borderRadius: 'var(--d0nj-radius-md, 8px)',
       border: '1px solid var(--dsw-alias-border-l1)',
-      // No background and no colour token here: a card represents a theme, so it
-      // paints that theme's own surface (set per card, below). Using a token made
-      // every card show the live theme instead, which read as banding.
+      background: 'var(--dsw-alias-bg-base)',
+      color: 'var(--dsw-alias-label-primary)',
+      font: 'inherit',
+      fontSize: 12,
+    },
+    segmented: {
+      display: 'inline-flex',
+      gap: 2,
+      padding: 2,
+      borderRadius: 'var(--d0nj-radius-md, 8px)',
+      border: '1px solid var(--dsw-alias-border-l1)',
+      background: 'var(--dsw-alias-bg-layer-2)',
+    },
+    segment: {
+      padding: '4px 10px',
+      border: '1px solid transparent',
+      borderRadius: 'var(--d0nj-radius-sm, 4px)',
+      background: 'transparent',
+      color: 'var(--dsw-alias-label-secondary)',
+      font: 'inherit',
+      fontSize: 12,
+      cursor: 'pointer',
+    },
+    segmentActive: {
+      borderColor: 'var(--dsw-alias-border-l1)',
+      background: 'var(--dsw-alias-bg-layer-1)',
+      color: 'var(--dsw-alias-label-primary)',
+      fontWeight: 600,
+    },
+    tile: {
+      display: 'flex',
+      flexDirection: 'column',
+      padding: 0,
+      overflow: 'hidden',
+      borderRadius: 'var(--d0nj-radius-md, 8px)',
+      border: '1px solid var(--dsw-alias-border-l1)',
       background: 'transparent',
       cursor: 'pointer',
       textAlign: 'left',
       color: 'var(--dsw-alias-label-primary)',
       font: 'inherit',
-      // The UA focus ring lingers on whichever card was last clicked; a
-      // focus-visible ring keeps keyboard affordance without that trail.
       outline: 'none',
     },
-    cardActive: {
-      borderColor: 'var(--dsw-alias-brand-primary)',
-      borderWidth: 2,
-      padding: 9,
-    },
-    swatches: { display: 'flex', gap: 4 },
-    swatch: {
-      width: 22,
-      height: 22,
-      borderRadius: 'var(--d0nj-radius-sm, 4px)',
-      border: '1px solid var(--dsw-alias-border-l1)',
+    tilePreview: { position: 'relative', display: 'flex', height: 84 },
+    tileSidebar: { width: 28, display: 'flex', flexDirection: 'column', gap: 4, padding: '9px 0 9px 9px' },
+    tileDot: { width: 5, height: 5, borderRadius: '50%' },
+    tileBody: { flex: 1, display: 'flex', flexDirection: 'column', gap: 5, padding: '11px 10px 9px' },
+    tileLine: { height: 4, borderRadius: 2 },
+    tileChips: { display: 'flex', gap: 3, marginTop: 'auto' },
+    tileChip: { width: 16, height: 5, borderRadius: 3 },
+    tileFooter: { display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px', fontSize: 12, fontWeight: 600, lineHeight: 1.25 },
+    tileName: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    tileBadge: {
+      marginLeft: 'auto',
+      width: 16,
+      height: 16,
+      borderRadius: '50%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: 10,
+      lineHeight: 1,
     },
     row: {
-      display: 'grid',
-      gridTemplateColumns: 'minmax(120px, 1fr) auto auto',
+      display: 'flex',
+      flexWrap: 'wrap',
       gap: 8,
       alignItems: 'center',
       padding: '6px 0',
       borderBottom: '1px solid var(--dsw-alias-border-l1)',
     },
-    rowLabel: { display: 'flex', flexDirection: 'column', gap: 2 },
+    rowLabel: { display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 180px', minWidth: 120 },
     input: {
       width: 92,
       padding: '4px 6px',
@@ -125,7 +202,7 @@ function styles(): Record<string, Record<string, string | number>> {
       fontSize: 12,
     },
     select: {
-      width: 260,
+      width: '100%',
       padding: '4px 6px',
       borderRadius: 'var(--d0nj-radius-sm, 4px)',
       border: '1px solid var(--dsw-alias-border-l1)',
@@ -134,9 +211,9 @@ function styles(): Record<string, Record<string, string | number>> {
       font: 'inherit',
       fontSize: 12,
     },
-    fontStack: { display: 'flex', flexDirection: 'column', gap: 4, width: 260 },
     fontRow: { gap: 18 },
-    combo: { position: 'relative', width: 260 },
+    combo: { position: 'relative', flex: '1 1 220px', minWidth: 140 },
+    slider: { flex: '1 1 180px', minWidth: 120, cursor: 'pointer' },
     listbox: {
       position: 'absolute',
       zIndex: 10,
@@ -191,15 +268,6 @@ function styles(): Record<string, Record<string, string | number>> {
       color: 'var(--dsw-alias-state-warn-primary)',
       fontSize: 12,
     },
-    preview: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8,
-      padding: 14,
-      borderRadius: 'var(--d0nj-radius-lg, 12px)',
-      border: '1px solid var(--dsw-alias-border-l1)',
-      background: 'var(--dsw-alias-bg-base)',
-    },
     row2: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
   }
 }
@@ -209,8 +277,7 @@ interface ComboState {
   open: boolean
   query: string
   active: number
-  /** Set by typing, so Enter does not repeat an already-written stack. */
-  written?: string | undefined
+  draft?: string | undefined
 }
 
 /**
@@ -267,7 +334,7 @@ export function ThemeStudio(
     createElement: (type: unknown, props?: unknown, ...children: unknown[]) => unknown
     useState: <T>(initial: T) => [T, (next: T) => void]
   },
-  props: { state: PanelState; actions: PanelActions; presets: readonly { id: string; label: string; description: string; colorScheme: 'light' | 'dark'; tokens: Record<string, { light: string; dark: string }> }[] },
+  props: { state: PanelState; actions: PanelActions; presets: readonly PresetChoice[] },
 ): unknown {
   const h = React.createElement
   const s = styles()
@@ -280,7 +347,10 @@ export function ThemeStudio(
   const [localPreset, setLocalPreset] = React.useState(state.basePreset)
   const [localTokens, setLocalTokens] = React.useState<Record<string, { light: string; dark: string }>>({})
   const [localGeometry, setLocalGeometry] = React.useState(state.geometry)
-  const [localTypography, setLocalTypography] = React.useState(state.typography)
+  const [localTypography, setLocalTypography] = React.useState<TypographyDraft>({ ...state.typography })
+  const [sizeDrafts, setSizeDrafts] = React.useState<Partial<Record<FontRole, string>>>({})
+  const [query, setQuery] = React.useState('')
+  const [scheme, setScheme] = React.useState<SchemeFilter>('all')
   // The counter must keep changing: writing the same number makes React bail out.
   const [renderTick, setRender] = React.useState(0)
   const choices = fontChoices()
@@ -290,13 +360,10 @@ export function ThemeStudio(
    * @param role - font role being changed.
    * @param value - CSS stack to apply.
    */
-  const applyFont = (role: 'text' | 'code' | 'terminal', value: string): void => {
+  const applyFont = (role: FontRole, value: string): void => {
     const hosted = findHostedFont(value)
-    if (hosted === undefined) {
-      actions.setFont(role, value)
-      return
-    }
-    void loadHostedFont(hosted).then(() => actions.setFont(role, value))
+    if (hosted !== undefined) void loadHostedFont(hosted)
+    actions.setFont(role, value)
   }
 
   /**
@@ -321,11 +388,12 @@ export function ThemeStudio(
       combo.open = false
       combo.query = ''
       combo.active = 0
+      combo.draft = undefined
       const next = isDefault(value) ? '' : value
-      if (next !== combo.written) onChange(next)
-      combo.written = undefined
+      if (next !== family) onChange(next)
       rerender()
     }
+    const display = combo.draft ?? family
     const visible = combo.open ? matches() : []
     return h(
       'div',
@@ -338,27 +406,27 @@ export function ThemeStudio(
         'aria-expanded': combo.open,
         'aria-autocomplete': 'list',
         placeholder: 'Default (built-in stack)',
-        value: family,
+        value: display,
         onFocus: (event: { target: { value: string; select?: () => void } }) => {
           combo.open = true
           combo.query = ''
           combo.active = 0
+          combo.draft = family
           event.target.select?.()
           rerender()
         },
-        onInput: (event: { target: { value: string } }) => {
+        onChange: (event: { target: { value: string } }) => {
           combo.open = true
           combo.query = event.target.value
+          combo.draft = event.target.value
           combo.active = 0
-          combo.written = event.target.value
-          onChange(event.target.value)
           rerender()
-        },
-        onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+        },        onKeyDown: (event: { key: string; preventDefault: () => void }) => {
           const list = visible
           if (event.key === 'Escape') {
             combo.open = false
             combo.query = ''
+            combo.draft = undefined
             rerender()
             return
           }
@@ -376,13 +444,17 @@ export function ThemeStudio(
           }
           if (event.key === 'Enter') {
             const picked = list[combo.active]
+            const typed = (combo.draft ?? '').trim()
             if (combo.open && picked !== undefined) commit(picked)
-            else if (combo.open && combo.query.trim() !== '') commit(combo.query.trim())
+            else if (combo.open && typed !== '') commit(typed)
           }
         },
         onBlur: () => {
+          const typed = combo.draft
           combo.open = false
           combo.query = ''
+          combo.draft = undefined
+          if (typed !== undefined && typed.trim() !== '' && typed.trim() !== family) onChange(typed.trim())
           rerender()
         },
       }),
@@ -432,46 +504,133 @@ export function ThemeStudio(
     return presetValue ?? { light: '', dark: '' }
   }
 
-  const presetCards = [
-    { id: 'none', label: 'No preset', description: 'Start from the built-in palette.', colorScheme: 'dark' as const, tokens: {} },
-    ...presets,
-  ].map((preset) => {
-    const base = preset.tokens['--dsw-alias-bg-base']
-    const accent = preset.tokens['--dsw-alias-brand-primary']
-    const label = preset.tokens['--dsw-alias-label-primary']
-    const active = (localPreset ?? state.basePreset) === preset.id
+  const previewColors = (preset?: PresetChoice): PreviewColors => {
+    const mode = preset?.colorScheme ?? 'dark'
+    const pick = (name: string, fallback: string): string => preset?.tokens[name]?.[mode] ?? fallback
+    return {
+      base: pick('--dsw-alias-bg-base', 'var(--dsw-alias-bg-base)'),
+      sidebar: pick('--dsw-specific-sidebar-fill', 'var(--dsw-specific-sidebar-fill)'),
+      primary: pick('--dsw-alias-label-primary', 'var(--dsw-alias-label-primary)'),
+      secondary: pick('--dsw-alias-label-secondary', 'var(--dsw-alias-label-secondary)'),
+      accent: pick('--dsw-alias-brand-primary', 'var(--dsw-alias-brand-primary)'),
+      error: pick('--dsw-alias-state-error-primary', 'var(--dsw-alias-state-error-primary)'),
+      success: pick('--dsw-alias-state-success-primary', 'var(--dsw-alias-state-success-primary)'),
+      warn: pick('--dsw-alias-state-warn-primary', 'var(--dsw-alias-state-warn-primary)'),
+      border: pick('--dsw-alias-border-l2', 'var(--dsw-alias-border-l1)'),
+    }
+  }
+
+  const presetTile = (id: string, label: string, description: string | undefined, preset?: PresetChoice): unknown => {
+    const active = (localPreset ?? state.basePreset) === id
+    const colors = previewColors(preset)
+    const dot = (background: string): unknown => h('span', { style: { ...s.tileDot, background } })
+    const line = (width: string, background: string): unknown => h('span', { style: { ...s.tileLine, width, background } })
+    const chip = (background: string): unknown => h('span', { style: { ...s.tileChip, background } })
     return h(
       'button',
       {
-        key: preset.id,
+        key: id,
         type: 'button',
+        title: description,
         style: {
-          ...s.card,
-          // Paint the preset's own surface and text colour, so the grid shows what
-          // each theme looks like rather than the one currently applied.
-          background: base?.light ?? 'transparent',
-          color: label?.light ?? 'var(--dsw-alias-label-primary)',
-          ...(active ? s.cardActive : {}),
+          ...s.tile,
+          ...(active ? { borderColor: colors.accent, boxShadow: `0 0 0 1px ${colors.accent}` } : {}),
         },
         'aria-pressed': active,
         onClick: () => {
-          setLocalPreset(preset.id)
+          setLocalPreset(id)
           setLocalTokens({})
-          actions.setPreset(preset.id)
+          actions.setPreset(id)
         },
       },
       h(
         'div',
-        { style: s.swatches },
-        h('span', { style: { ...s.swatch, background: base?.light ?? 'transparent' } }),
-        h('span', { style: { ...s.swatch, background: base?.dark ?? 'transparent' } }),
-        h('span', { style: { ...s.swatch, background: accent?.dark ?? 'transparent' } }),
-        h('span', { style: { ...s.swatch, background: label?.dark ?? 'transparent' } }),
+        { style: { ...s.tilePreview, background: colors.base } },
+        h(
+          'div',
+          { style: { ...s.tileSidebar, background: colors.sidebar } },
+          dot(colors.secondary),
+          dot(colors.border),
+          dot(colors.accent),
+        ),
+        h(
+          'div',
+          { style: s.tileBody },
+          line('58%', colors.primary),
+          line('78%', colors.secondary),
+          line('42%', colors.secondary),
+          h(
+            'div',
+            { style: s.tileChips },
+            chip(colors.accent),
+            chip(colors.error),
+            chip(colors.success),
+            chip(colors.warn),
+          ),
+        ),
       ),
-      h('span', { style: { fontSize: 13, fontWeight: 600 } }, preset.label),
-      h('span', { style: s.hint }, preset.description),
+      h(
+        'div',
+        {
+          style: {
+            ...s.tileFooter,
+            background: colors.base,
+            color: colors.primary,
+            borderTop: `1px solid ${colors.border}`,
+          },
+        },
+        h('span', { style: s.tileName }, label),
+        active
+          ? h('span', { style: { ...s.tileBadge, background: colors.accent, color: colors.base }, 'aria-hidden': true }, '✓')
+          : null,
+      ),
     )
-  })
+  }
+
+  const term = query.trim().toLowerCase()
+  const textMatches = (text: string): boolean => term === '' || text.toLowerCase().includes(term)
+  const shown = presets.filter(
+    (preset) => (scheme === 'all' || preset.colorScheme === scheme)
+      && textMatches(`${preset.label} ${preset.description} ${preset.id}`),
+  )
+  const builtinTile = textMatches('built-in none')
+    ? presetTile('none', 'Built-in', 'Follow the shipped palette.', undefined)
+    : null
+  const presetTiles = shown.map((preset) => presetTile(preset.id, preset.label, preset.description, preset))
+  const selectorSegments: readonly { id: SchemeFilter; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'dark', label: 'Dark' },
+    { id: 'light', label: 'Light' },
+  ]
+  const selectorTools = h(
+    'div',
+    { style: s.selectorTools },
+    h('input', {
+      type: 'search',
+      style: s.search,
+      'aria-label': 'Search presets',
+      placeholder: 'Search presets',
+      value: query,
+      onChange: (event: { target: { value: string } }) => setQuery(event.target.value),
+    }),
+    h(
+      'div',
+      { style: s.segmented, role: 'group', 'aria-label': 'Filter presets by colour scheme' },
+      ...selectorSegments.map((segment) =>
+        h(
+          'button',
+          {
+            key: segment.id,
+            type: 'button',
+            style: scheme === segment.id ? { ...s.segment, ...s.segmentActive } : s.segment,
+            'aria-pressed': scheme === segment.id,
+            onClick: () => setScheme(segment.id),
+          },
+          segment.label,
+        ),
+      ),
+    ),
+  )
 
   const tokenRows = state.tokens.map((row) => {
     const current = effective(row.name)
@@ -551,37 +710,52 @@ export function ThemeStudio(
     )
   })
 
-  const fontRow = (
-    role: 'text' | 'code' | 'terminal',
-    label: string,
-    family: string,
-    size: number,
-  ): unknown => {
-    const edit = (value: string): void => {
-      const key = role === 'text' ? 'textFontFamily' : role === 'code' ? 'codeFontFamily' : 'terminalFontFamily'
-      setLocalTypography({ ...(localTypography ?? state.typography), [key]: value })
+  const fontRow = (role: FontRole, label: string): unknown => {
+    const range = FONT_SIZE_RANGES[role]
+    const typography = localTypography
+    const family = typography[FONT_FAMILY_FIELDS[role]] || (state.applied.fontFamilies[role] ?? '')
+    const size = typography[FONT_SIZE_FIELDS[role]] ?? state.applied.fontSizes[role] ?? range.fallback
+    const editFamily = (value: string): void => {
+      const next: TypographyDraft = { ...typography }
+      next[FONT_FAMILY_FIELDS[role]] = value
+      setLocalTypography(next)
       applyFont(role, value)
+    }
+    const commitSize = (): void => {
+      const draft = sizeDrafts[role]
+      const remaining = { ...sizeDrafts }
+      delete remaining[role]
+      setSizeDrafts(remaining)
+      if (draft === undefined || draft.trim() === '') return
+      const parsed = Number(draft)
+      if (!Number.isFinite(parsed)) return
+      const px = clamp(parsed, range.min, range.max)
+      const next: TypographyDraft = { ...typography }
+      next[FONT_SIZE_FIELDS[role]] = px
+      setLocalTypography(next)
+      actions.setFontSize(role, px)
     }
     return h(
       'div',
       { style: { ...s.row, ...s.fontRow } },
       h('div', { style: s.rowLabel }, h('span', { style: { fontSize: 12, fontWeight: 600 } }, label)),
-      fontCombo(`${label} font family`, family, edit),
+      fontCombo(`${label} font family`, family, editFamily),
       h(
         'div',
         { style: s.row2 },
         h('input', {
           style: s.input,
           type: 'number',
-          min: 8,
-          max: 24,
+          min: range.min,
+          max: range.max,
           'aria-label': `${label} size`,
-          value: size,
+          value: sizeDrafts[role] ?? String(size),
           onChange: (event: { target: { value: string } }) => {
-            const px = Number(event.target.value)
-            const key = role === 'text' ? 'fontSize' : role === 'code' ? 'codeFontSize' : 'terminalFontSize'
-            setLocalTypography({ ...(localTypography ?? state.typography), [key]: px })
-            actions.setFontSize(role, px)
+            setSizeDrafts({ ...sizeDrafts, [role]: event.target.value })
+          },
+          onBlur: commitSize,
+          onKeyDown: (event: { key: string }) => {
+            if (event.key === 'Enter') commitSize()
           },
         }),
         h('span', { style: s.hint }, 'px'),
@@ -599,38 +773,21 @@ export function ThemeStudio(
     h(
       'section',
       { style: s.section },
-      h('h3', { style: s.heading }, 'Base theme'),
-      h('p', { style: s.hint }, 'A preset supplies a complete token set. Tune individual values below it.'),
-      h('div', { style: s.grid }, presetCards),
-    ),
-
-    h(
-      'section',
-      { style: s.section },
-      h('h3', { style: s.heading }, 'Live preview'),
-      h(
-        'div',
-        { style: s.preview },
-        h('span', { style: { fontSize: 15, fontWeight: 600 } }, 'The quick brown fox'),
-        h('span', { style: { fontSize: 12, color: 'var(--dsw-alias-label-secondary)' } }, 'Secondary text sits one step down.'),
-        h(
-          'div',
-          { style: s.row2 },
-          h('span', { style: { ...s.button, background: 'var(--dsw-alias-brand-primary)', color: 'var(--dsw-alias-bg-base)' } }, 'Accent'),
-          h('span', { style: { ...s.button, borderColor: 'var(--dsw-alias-state-error-primary)' } }, 'Error'),
-          h('span', { style: { ...s.button, borderColor: 'var(--dsw-alias-state-success-primary)' } }, 'Success'),
-          h('span', { style: { ...s.button, borderColor: 'var(--dsw-alias-state-warn-primary)' } }, 'Warning'),
-        ),
-      ),
+      h('h3', { style: s.heading }, 'Theme'),
+      selectorTools,
+      h('div', { style: s.grid }, builtinTile, ...presetTiles),
+      builtinTile === null && presetTiles.length === 0
+        ? h('p', { style: s.hint }, 'No presets match.')
+        : null,
     ),
 
     h(
       'section',
       { style: s.section },
       h('h3', { style: s.heading }, 'Typography'),
-      fontRow('text', 'Interface text', (localTypography ?? state.typography).textFontFamily, (localTypography ?? state.typography).fontSize),
-      fontRow('code', 'Code', (localTypography ?? state.typography).codeFontFamily, (localTypography ?? state.typography).codeFontSize),
-      fontRow('terminal', 'Terminal', (localTypography ?? state.typography).terminalFontFamily, (localTypography ?? state.typography).terminalFontSize),
+      fontRow('text', 'Interface text'),
+      fontRow('code', 'Code'),
+      fontRow('terminal', 'Terminal'),
     ),
 
     h(
@@ -645,15 +802,16 @@ export function ThemeStudio(
           type: 'range',
           min: 0,
           max: 24,
-          value: (localGeometry ?? state.geometry).radius,
+          style: s.slider,
+          value: localGeometry.radius,
           'aria-label': 'Corner radius',
           onChange: (event: { target: { value: string } }) => {
             const radius = Number(event.target.value)
-            setLocalGeometry({ ...(localGeometry ?? state.geometry), radius })
+            setLocalGeometry({ ...localGeometry, radius })
             actions.setRadius(radius)
           },
         }),
-        h('span', { style: s.hint }, `${String((localGeometry ?? state.geometry).radius)}px`),
+        h('span', { style: s.hint }, `${String(localGeometry.radius)}px`),
       ),
       h(
         'div',
@@ -669,12 +827,12 @@ export function ThemeStudio(
                 key: density,
                 type: 'button',
                 style:
-                  (localGeometry ?? state.geometry).density === density
+                  localGeometry.density === density
                     ? { ...s.button, borderColor: 'var(--dsw-alias-brand-primary)' }
                     : s.button,
-                'aria-pressed': (localGeometry ?? state.geometry).density === density,
+                'aria-pressed': localGeometry.density === density,
                 onClick: () => {
-                  setLocalGeometry({ ...(localGeometry ?? state.geometry), density })
+                  setLocalGeometry({ ...localGeometry, density })
                   actions.setDensity(density)
                 },
               },
@@ -690,7 +848,6 @@ export function ThemeStudio(
       'section',
       { style: s.section },
       h('h3', { style: s.heading }, 'Colour tokens'),
-      h('p', { style: s.hint }, 'Both values are required: one per palette mode, so switching scheme stays legible.'),
       ...tokenRows,
     ),
 
@@ -706,10 +863,20 @@ export function ThemeStudio(
 
     h(
       'section',
-      { style: s.section },
+      { style: { ...s.section, alignItems: 'flex-start' } },
       h(
         'button',
-        { type: 'button', style: s.button, onClick: () => actions.resetAll() },
+        {
+          type: 'button',
+          style: s.button,
+          onClick: () => {
+            setLocalPreset('none')
+            setLocalTokens({})
+            setLocalTypography({ textFontFamily: '', codeFontFamily: '', terminalFontFamily: '' })
+            setLocalGeometry({ ...DEFAULT_GEOMETRY })
+            actions.resetAll()
+          },
+        },
         'Reset all customization',
       ),
     ),

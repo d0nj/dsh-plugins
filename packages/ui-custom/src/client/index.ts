@@ -20,17 +20,23 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 
-import { PRESETS, TOKEN_SPECS } from '../spec.js'
-import { resolveCustomization } from '../resolve.js'
+import { DEFAULT_GEOMETRY, FONT_FAMILY_FIELDS, FONT_ROLES, FONT_SIZE_FIELDS, FONT_SIZE_RANGES, PRESETS, TOKEN_SPECS } from '../spec.js'
+import { planTypography, resolveCustomization } from '../resolve.js'
 import { ThemeStudio } from './panel.js'
 import type { PanelActions, PanelState } from './panel.js'
-import type { CustomizationDocument } from '../resolve.js'
+import type { AppliedTypography, CustomizationDocument, FontApplication } from '../resolve.js'
+import type { FontRole } from '../spec.js'
 
 /** One token's value per palette mode, as ctx.theme.overrideTokens requires. */
 export type ThemeTokenOverrides = Record<string, { light: string; dark: string }>
 
 /** Layer identity; the runtime keeps one layer per source. */
 export const OVERRIDE_SOURCE = 'd0nj-ui-custom'
+
+interface ThemeSnapshotSlice {
+  readonly fontFamilies?: Readonly<Record<string, string>>
+  readonly fontSizes?: Readonly<Record<string, number>>
+}
 
 /**
  * The slice of the theme service this plugin uses.
@@ -46,16 +52,20 @@ interface ThemeService {
     tokens: Record<string, string>
   }): () => void
   overrideTokens(source: string, tokens: ThemeTokenOverrides): () => void
-  setFontFamily(role: 'text' | 'code' | 'terminal', value: string): void
-  setFontSize(role: 'text' | 'code' | 'terminal', px: number): void
-  getTheme(): unknown
+  setFontFamily(role: FontRole, value: string): void
+  setFontSize(role: FontRole, px: number): void
+  getTheme(): ThemeSnapshotSlice | undefined
 }
+
+type SettingsPathOp =
+  | { readonly op: 'set'; readonly path: readonly string[]; readonly value: unknown }
+  | { readonly op: 'unset'; readonly path: readonly string[] }
 
 /** The slice of the settings client this plugin uses to read and write its document. */
 interface ConfigForm {
   getSnapshot(): { readonly value: unknown; readonly revision: number | undefined; readonly writable: boolean }
   subscribe(listener: () => void): () => void
-  mutate(ops: readonly { op: 'set'; path: readonly string[]; value: unknown }[]): Promise<boolean>
+  mutate(ops: readonly SettingsPathOp[]): Promise<boolean>
   set(field: string, value: unknown): Promise<boolean>
 }
 
@@ -114,11 +124,8 @@ function asDocument(value: unknown): CustomizationDocument {
       textFontFamily: '',
       codeFontFamily: '',
       terminalFontFamily: '',
-      fontSize: 14,
-      codeFontSize: 11,
-      terminalFontSize: 13,
     },
-    geometry: { radius: 8, density: 'comfortable' },
+    geometry: { ...DEFAULT_GEOMETRY },
   }
   if (value === null || typeof value !== 'object') return fallback
   const record = value as Record<string, unknown>
@@ -143,6 +150,27 @@ function asDocument(value: unknown): CustomizationDocument {
         : {}),
     },
   }
+}
+
+function readTypography(theme: ThemeService): AppliedTypography {
+  const snapshot = theme.getTheme()
+  return {
+    fontFamilies: snapshot?.fontFamilies ?? {},
+    fontSizes: snapshot?.fontSizes ?? {},
+  }
+}
+
+function applyTypography(theme: ThemeService, plan: readonly FontApplication[]): void {
+  for (const { role, family, size } of plan) {
+    if (family !== undefined) swallow(() => { theme.setFontFamily(role, family) })
+    if (size !== undefined) swallow(() => { theme.setFontSize(role, size) })
+  }
+}
+
+function swallow(operation: () => void): void {
+  try {
+    operation()
+  } catch {}
 }
 
 /**
@@ -197,8 +225,6 @@ function applyInner(ctx: Context): void {
 
   const form = forms.get('ui-custom')
   let disposeLayer: (() => void) | undefined
-  // The last typography this plugin applied, so it writes only real changes and
-  // never fights the shipped Appearance rows on every snapshot.
   let appliedTypography = ''
 
   /**
@@ -207,33 +233,15 @@ function applyInner(ctx: Context): void {
   const refresh = (): void => {
     const snapshot = form.getSnapshot()
     if (snapshot.value === undefined) return
-    const resolved = resolveCustomization(asDocument(snapshot.value))
+    const document = asDocument(snapshot.value)
+    const resolved = resolveCustomization(document)
     disposeLayer?.()
     disposeLayer = theme.overrideTokens(OVERRIDE_SOURCE, resolved.tokens)
 
-    // Typography goes through the theme service's own entries, so the built-in
-    // rows and this panel share one source of truth instead of shadowing each
-    // other. Sizes are only written when they differ, because each write is a
-    // settings mutation.
-    const typography = resolved.typography
-    const key = JSON.stringify(typography)
-    if (key !== appliedTypography) {
-      appliedTypography = key
-      const roles: readonly [('text' | 'code' | 'terminal'), string, number][] = [
-        ['text', typography.textFontFamily, typography.fontSize],
-        ['code', typography.codeFontFamily, typography.codeFontSize],
-        ['terminal', typography.terminalFontFamily, typography.terminalFontSize],
-      ]
-      for (const [role, family, size] of roles) {
-        try {
-          theme.setFontFamily(role, family)
-          theme.setFontSize(role, size)
-        } catch {
-          // A font name the runtime rejects must not stop the colour layer from
-          // applying; the panel surfaces the rejected value instead.
-        }
-      }
-    }
+    const key = JSON.stringify(document.typography)
+    if (key === appliedTypography) return
+    appliedTypography = key
+    applyTypography(theme, planTypography(resolved.typography, readTypography(theme)))
   }
 
   ctx.effect(() => form.subscribe(refresh))
@@ -243,7 +251,7 @@ function applyInner(ctx: Context): void {
   refresh()
 
   try {
-    registerPanel(ctx, () => panelState(form), panelActions(form, readDocument), form)
+    registerPanel(ctx, () => panelState(form, theme), panelActions(form, theme), form)
   } catch (error) {
     reportFailure(ctx, error)
   }
@@ -321,28 +329,12 @@ function readDocument(form: ConfigForm): CustomizationDocument {
 }
 
 /**
- * The document the panel last rendered, so its actions can merge one field
- * without restating the whole section from a possibly stale snapshot.
- */
-let currentDocument: CustomizationDocument | undefined
-
-/**
- * Supply the current document for the panel's reads.
- * @param form - the settings form.
- * @returns the document.
- */
-function getDocument(form: ConfigForm): CustomizationDocument {
-  currentDocument = readDocument(form)
-  return currentDocument
-}
-
-/**
  * Build the panel's state from the stored document.
  * @param form - the settings form.
  * @returns the state the panel renders.
  */
-function panelState(form: ConfigForm): PanelState {
-  const document = getDocument(form)
+function panelState(form: ConfigForm, theme: ThemeService): PanelState {
+  const document = readDocument(form)
   const resolved = resolveCustomization(document)
   const overrides = document.tokens
   return {
@@ -354,6 +346,7 @@ function panelState(form: ConfigForm): PanelState {
       override: overrides[spec.name],
     })),
     typography: resolved.typography,
+    applied: readTypography(theme),
     geometry: document.geometry,
     warnings: resolved.warnings,
     writable: form.getSnapshot().writable,
@@ -362,52 +355,43 @@ function panelState(form: ConfigForm): PanelState {
 
 /**
  * Build the panel's write actions.
- *
- * Every action writes a whole field through the settings form, which serializes
- * the mutation against the namespace revision. Tokens are written as one field
- * (`tokens`) rather than per-name, because the schema models them as a dict and
- * a partial write would drop the others.
- *
  * @param form - the settings form.
- * @param document - reads the document the action should start from.
  * @returns the actions the panel invokes.
  */
-function panelActions(form: ConfigForm, document: (form: ConfigForm) => CustomizationDocument): PanelActions {
-  const write = (field: string, value: unknown): void => {
-    void form.set(field, value)
-  }
-  const withTokens = (mutate: (tokens: CustomizationDocument['tokens']) => CustomizationDocument['tokens']): void => {
-    const base = document(form)
-    write('tokens', mutate({ ...base.tokens }))
+function panelActions(form: ConfigForm, theme: ThemeService): PanelActions {
+  const writePath = (path: readonly string[], value: unknown): void => {
+    void form.mutate([{ op: 'set', path, value }])
   }
   return {
-    setPreset: (id) => write('basePreset', id),
-    setToken: (name, light, dark) =>
-      withTokens((tokens) => ({ ...tokens, [name]: { light, dark } })),
-    clearToken: (name) =>
-      withTokens((tokens) => {
-        const next = { ...tokens }
-        delete next[name]
-        return next
-      }),
+    setPreset: (id) => { writePath(['basePreset'], id) },
+    setToken: (name, light, dark) => { writePath(['tokens', name], { light, dark }) },
+    clearToken: (name) => { void form.mutate([{ op: 'unset', path: ['tokens', name] }]) },
     setFont: (role, value) => {
-      const base = document(form)
-      const key = role === 'text' ? 'textFontFamily' : role === 'code' ? 'codeFontFamily' : 'terminalFontFamily'
-      write('typography', { ...base.typography, [key]: value })
+      writePath(['typography', FONT_FAMILY_FIELDS[role]], value)
+      swallow(() => { theme.setFontFamily(role, value) })
     },
     setFontSize: (role, px) => {
-      const base = document(form)
-      const key = role === 'text' ? 'fontSize' : role === 'code' ? 'codeFontSize' : 'terminalFontSize'
-      write('typography', { ...base.typography, [key]: px })
+      writePath(['typography', FONT_SIZE_FIELDS[role]], px)
+      swallow(() => { theme.setFontSize(role, px) })
     },
-    setRadius: (px) => {
-      const base = document(form)
-      write('geometry', { ...base.geometry, radius: px })
+    setRadius: (px) => { writePath(['geometry', 'radius'], px) },
+    setDensity: (density) => { writePath(['geometry', 'density'], density) },
+    resetAll: () => {
+      const document = readDocument(form)
+      void form.mutate([
+        { op: 'set', path: ['basePreset'], value: 'none' },
+        { op: 'set', path: ['tokens'], value: {} },
+        { op: 'set', path: ['typography'], value: {} },
+        { op: 'set', path: ['geometry'], value: { ...DEFAULT_GEOMETRY } },
+      ])
+      for (const role of FONT_ROLES) {
+        if (document.typography[FONT_FAMILY_FIELDS[role]] !== '') {
+          swallow(() => { theme.setFontFamily(role, '') })
+        }
+        if (document.typography[FONT_SIZE_FIELDS[role]] !== undefined) {
+          swallow(() => { theme.setFontSize(role, FONT_SIZE_RANGES[role].fallback) })
+        }
+      }
     },
-    setDensity: (density) => {
-      const base = document(form)
-      write('geometry', { ...base.geometry, density: density as CustomizationDocument['geometry']['density'] })
-    },
-    resetAll: () => write('tokens', {}),
   }
 }

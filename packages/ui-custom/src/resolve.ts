@@ -16,6 +16,9 @@
  */
 import {
   DENSITIES,
+  FONT_FAMILY_FIELDS,
+  FONT_ROLES,
+  FONT_SIZE_FIELDS,
   FONT_SIZE_RANGES,
   RADIUS_MAX,
   RADIUS_MIN,
@@ -41,10 +44,20 @@ export interface Typography {
   readonly codeFontFamily: string
   /** Sidebar terminal font stack; empty keeps the built-in stack. */
   readonly terminalFontFamily: string
-  /** Font sizes per role, each within its own range. */
-  readonly fontSize: number
-  readonly codeFontSize: number
-  readonly terminalFontSize: number
+  readonly fontSize?: number
+  readonly codeFontSize?: number
+  readonly terminalFontSize?: number
+}
+
+export interface AppliedTypography {
+  readonly fontFamilies: Readonly<Partial<Record<FontRole, string>>>
+  readonly fontSizes: Readonly<Partial<Record<FontRole, number>>>
+}
+
+export interface FontApplication {
+  readonly role: FontRole
+  readonly family?: string
+  readonly size?: number
 }
 
 /** The customization document, as the Host config carries it. */
@@ -149,6 +162,52 @@ export function correctFontSize(role: FontRole, px: number): number {
   return clamp(px, range.min, range.max)
 }
 
+function correctSizes(
+  input: Typography,
+  warnings: string[],
+): { fontSize?: number; codeFontSize?: number; terminalFontSize?: number } {
+  const sizes: { fontSize?: number; codeFontSize?: number; terminalFontSize?: number } = {}
+  for (const role of FONT_ROLES) {
+    const key = FONT_SIZE_FIELDS[role]
+    const requested = input[key]
+    if (requested === undefined) continue
+    const corrected = correctFontSize(role, requested)
+    sizes[key] = corrected
+    if (corrected !== requested) {
+      const range = FONT_SIZE_RANGES[role]
+      warnings.push(`${role} font size corrected to ${String(corrected)}px (allowed ${String(range.min)}–${String(range.max)})`)
+    }
+  }
+  return sizes
+}
+
+export function normalizeFontList(value: string): string {
+  return value
+    .split(',')
+    .map((name) => name.replace(/["'\\<>\u0000-\u001f\u007f]/gu, '').replace(/\s+/gu, ' ').trim())
+    .filter((name) => name !== '')
+    .map((name) => (GENERIC_FAMILIES.has(name.toLowerCase()) ? name : `"${name}"`))
+    .join(', ')
+}
+
+export function planTypography(typography: Typography, applied: AppliedTypography | undefined): FontApplication[] {
+  const plans: FontApplication[] = []
+  for (const role of FONT_ROLES) {
+    const family = typography[FONT_FAMILY_FIELDS[role]]
+    const size = typography[FONT_SIZE_FIELDS[role]]
+    const writeFamily = family.trim() !== ''
+      && normalizeFontList(family) !== normalizeFontList(applied?.fontFamilies[role] ?? '')
+    const writeSize = size !== undefined && size !== applied?.fontSizes[role]
+    if (!writeFamily && !writeSize) continue
+    plans.push({
+      role,
+      ...(writeFamily ? { family } : {}),
+      ...(writeSize ? { size } : {}),
+    })
+  }
+  return plans
+}
+
 /**
  * Whether a string names a known density.
  * @param value - candidate density.
@@ -234,12 +293,7 @@ export function resolveCustomization(document: CustomizationDocument): ResolvedC
     textFontFamily: document.typography.textFontFamily,
     codeFontFamily: document.typography.codeFontFamily,
     terminalFontFamily: document.typography.terminalFontFamily,
-    fontSize: correctFontSize('text', document.typography.fontSize),
-    codeFontSize: correctFontSize('code', document.typography.codeFontSize),
-    terminalFontSize: correctFontSize('terminal', document.typography.terminalFontSize),
-  }
-  if (typography.fontSize !== document.typography.fontSize) {
-    warnings.push(`text font size corrected to ${String(typography.fontSize)}px (allowed ${String(FONT_SIZE_RANGES.text.min)}–${String(FONT_SIZE_RANGES.text.max)})`)
+    ...correctSizes(document.typography, warnings),
   }
 
   return { tokens, typography, warnings }

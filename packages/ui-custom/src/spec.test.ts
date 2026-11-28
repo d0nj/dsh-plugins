@@ -26,6 +26,8 @@ import {
   geometryTokens,
   isColor,
   isDensity,
+  normalizeFontList,
+  planTypography,
   resolveCustomization,
 } from './resolve.js'
 import type { CustomizationDocument } from './resolve.js'
@@ -168,8 +170,30 @@ describe('PRESETS', () => {
 
   it('ships the famous editor themes', () => {
     // The set the request named; a rename here should be a deliberate choice.
-    for (const id of ['dracula', 'nord', 'gruvbox', 'one-dark', 'solarized', 'monokai', 'tokyo-night']) {
+    for (const id of ['dracula', 'nord', 'gruvbox', 'one-dark', 'solarized', 'monokai', 'tokyo-night', 'kanagawa-wave', 'everforest', 'night-owl']) {
       assert.ok(PRESET_IDS.includes(id), `missing ${id}`)
+    }
+  })
+
+  it('ships the expansion, dark and light alike', () => {
+    for (const id of [
+      'material-palenight', 'synthwave-84', 'cobalt2', 'zenburn',
+      'geist', 'github-light', 'one-light', 'gruvbox-light', 'tokyo-night-day',
+      'solarized-light', 'rose-pine-dawn', 'catppuccin-latte',
+    ]) {
+      assert.ok(PRESET_IDS.includes(id), `missing ${id}`)
+    }
+    assert.ok(PRESETS.filter((preset) => preset.colorScheme === 'light').length >= 8, 'too few daylight presets')
+    assert.ok(PRESETS.filter((preset) => preset.colorScheme === 'dark').length >= 15, 'too few night presets')
+  })
+
+  it('keeps primary text legible on raised surfaces too', () => {
+    for (const preset of PRESETS) {
+      const layer = preset.tokens['--dsw-alias-bg-layer-1']
+      const label = preset.tokens['--dsw-alias-label-primary']
+      assert.ok(layer !== undefined && label !== undefined, preset.id)
+      assert.ok(contrast(layer.light, label.light) >= 4.5, `${preset.id} light label on layer-1`)
+      assert.ok(contrast(layer.dark, label.dark) >= 4.5, `${preset.id} dark label on layer-1`)
     }
   })
 })
@@ -284,6 +308,75 @@ describe('resolveCustomization', () => {
     const resolved = resolveCustomization(document())
     assert.equal(resolved.typography.fontSize, 14)
     assert.deepEqual(resolved.warnings, [])
+  })
+})
+
+describe('resolved typography', () => {
+  it('keeps a size the document does not state absent', () => {
+    const resolved = resolveCustomization(document({
+      typography: { textFontFamily: '', codeFontFamily: '', terminalFontFamily: '' },
+    }))
+    assert.equal(resolved.typography.fontSize, undefined)
+    assert.equal(resolved.typography.codeFontSize, undefined)
+    assert.deepEqual(resolved.warnings, [])
+  })
+})
+
+describe('normalizeFontList', () => {
+  it('matches the quoted form the theme service stores', () => {
+    assert.equal(normalizeFontList('Inter'), '"Inter"')
+    assert.equal(normalizeFontList('"Inter"'), '"Inter"')
+    assert.equal(normalizeFontList('Inter, system-ui'), '"Inter", system-ui')
+    assert.equal(normalizeFontList('  '), '')
+  })
+})
+
+describe('planTypography', () => {
+  const applied = {
+    fontFamilies: { text: '"Inter"', code: '"JetBrainsMono NF"', terminal: '"JetBrainsMono NF"' },
+    fontSizes: { text: 14, code: 11, terminal: 13 },
+  }
+
+  it('writes nothing when the theme already carries the document', () => {
+    const resolved = resolveCustomization(document({
+      typography: {
+        ...document().typography,
+        textFontFamily: 'Inter',
+        codeFontFamily: 'JetBrainsMono NF',
+        terminalFontFamily: 'JetBrainsMono NF',
+      },
+    }))
+    assert.deepEqual(planTypography(resolved.typography, applied), [])
+  })
+
+  it('writes nothing for a role the document leaves empty', () => {
+    const resolved = resolveCustomization(document())
+    assert.deepEqual(planTypography(resolved.typography, applied), [])
+  })
+
+  it('writes only the role whose family changed', () => {
+    const resolved = resolveCustomization(document({
+      typography: { ...document().typography, textFontFamily: 'Inter, system-ui' },
+    }))
+    assert.deepEqual(planTypography(resolved.typography, applied), [
+      { role: 'text', family: 'Inter, system-ui' },
+    ])
+  })
+
+  it('writes a stated size when the theme differs', () => {
+    const plan = planTypography(
+      { textFontFamily: '', codeFontFamily: '', terminalFontFamily: '', fontSize: 18 },
+      { fontFamilies: {}, fontSizes: { text: 16 } },
+    )
+    assert.deepEqual(plan, [{ role: 'text', size: 18 }])
+  })
+
+  it('leaves sizes alone when the document states none', () => {
+    const plan = planTypography(
+      { textFontFamily: '', codeFontFamily: '', terminalFontFamily: '' },
+      { fontFamilies: {}, fontSizes: { text: 16, code: 12, terminal: 14 } },
+    )
+    assert.deepEqual(plan, [])
   })
 })
 

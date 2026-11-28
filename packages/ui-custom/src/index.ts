@@ -15,7 +15,7 @@
 import z from '@deepseek-ai/schemastery'
 import type { Volatile } from '@deepseek-ai/cordis'
 
-import { DENSITIES, FONT_SIZE_RANGES, PRESET_IDS, RADIUS_MAX, RADIUS_MIN } from './spec.js'
+import { DEFAULT_GEOMETRY, DENSITIES, FONT_SIZE_RANGES, PRESET_IDS, RADIUS_MAX, RADIUS_MIN } from './spec.js'
 import type { CustomizationDocument } from './resolve.js'
 
 /** Cordis plugin name used by Loader diagnostics. */
@@ -44,22 +44,19 @@ const TypographyConfig = z.object({
     .step(1)
     .min(FONT_SIZE_RANGES.text.min)
     .max(FONT_SIZE_RANGES.text.max)
-    .default(FONT_SIZE_RANGES.text.fallback)
-    .description('Conversation text size in px.'),
+    .description('Conversation text size in px. Absent keeps whatever the theme already uses.'),
   codeFontSize: z
     .number()
     .step(1)
     .min(FONT_SIZE_RANGES.code.min)
     .max(FONT_SIZE_RANGES.code.max)
-    .default(FONT_SIZE_RANGES.code.fallback)
-    .description('Code block size in px.'),
+    .description('Code block size in px. Absent keeps whatever the theme already uses.'),
   terminalFontSize: z
     .number()
     .step(1)
     .min(FONT_SIZE_RANGES.terminal.min)
     .max(FONT_SIZE_RANGES.terminal.max)
-    .default(FONT_SIZE_RANGES.terminal.fallback)
-    .description('Sidebar terminal size in px.'),
+    .description('Sidebar terminal size in px. Absent keeps whatever the theme already uses.'),
 })
 
 /** Corner radius and spacing density. */
@@ -69,11 +66,11 @@ const GeometryConfig = z.object({
     .step(1)
     .min(RADIUS_MIN)
     .max(RADIUS_MAX)
-    .default(8)
+    .default(DEFAULT_GEOMETRY.radius)
     .description('Corner radius in px.'),
   density: z
     .union([z.const('compact'), z.const('comfortable'), z.const('spacious')])
-    .default('comfortable')
+    .default(DEFAULT_GEOMETRY.density)
     .description('Spacing density.'),
 })
 
@@ -147,15 +144,15 @@ export function toDocument(input: unknown): CustomizationDocument {
       textFontFamily: typography?.textFontFamily ?? '',
       codeFontFamily: typography?.codeFontFamily ?? '',
       terminalFontFamily: typography?.terminalFontFamily ?? '',
-      fontSize: typography?.fontSize ?? FONT_SIZE_RANGES.text.fallback,
-      codeFontSize: typography?.codeFontSize ?? FONT_SIZE_RANGES.code.fallback,
-      terminalFontSize: typography?.terminalFontSize ?? FONT_SIZE_RANGES.terminal.fallback,
+      ...(typography?.fontSize === undefined ? {} : { fontSize: typography.fontSize }),
+      ...(typography?.codeFontSize === undefined ? {} : { codeFontSize: typography.codeFontSize }),
+      ...(typography?.terminalFontSize === undefined ? {} : { terminalFontSize: typography.terminalFontSize }),
     },
     geometry: {
-      radius: geometry?.radius ?? 8,
+      radius: geometry?.radius ?? DEFAULT_GEOMETRY.radius,
       density: density !== undefined && (DENSITIES as readonly string[]).includes(density)
         ? density
-        : 'comfortable',
+        : DEFAULT_GEOMETRY.density,
     },
   }
 }
