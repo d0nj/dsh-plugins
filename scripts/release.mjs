@@ -1,13 +1,3 @@
-/**
- * Release every public workspace package with semantic-release.
- *
- * Each package runs in its own semantic-release process from its directory, so
- * `semantic-release-monorepo` can attribute commits by the files they touched
- * and the tag format stays `<package>@<version>`. Extra arguments are forwarded,
- * for example `node scripts/release.mjs --dry-run --no-ci`.
- *
- * @module scripts/release
- */
 import { spawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'

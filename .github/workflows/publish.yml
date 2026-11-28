@@ -1,13 +1,5 @@
 name: Publish
 
-# semantic-release derives the version from Conventional Commits on main, then
-# tags, releases on GitHub, and publishes to npm. Each package runs from its own
-# directory, so commits are attributed by the files they touched and every
-# package versions independently from its own <package>@<version> tags.
-#
-# npm authentication prefers OIDC trusted publishing. Set an NPM_TOKEN secret
-# only to allow the first publish of a package that does not exist on npm yet,
-# which trusted publishing cannot create.
 on:
   push:
     branches: [main]
@@ -46,7 +38,6 @@ jobs:
           node-version: 22.14.0
           cache: pnpm
 
-      # Trusted publishing needs npm 11.5.1 or later; the Node 22.14 image ships npm 10.
       - name: Upgrade npm for trusted publishing
         run: npm install --global npm@11
 
