@@ -1,0 +1,17 @@
+# Contributes the usage page and the price lookups behind it.
+#
+# The browser half fetches the Host route this row registers, so the row id
+# ("stats") is the plugin identity and the route path is the only other contract
+# between the halves.
+#
+# Prices default to the public models.dev catalog. A deployment behind its own
+# router bills at rates no catalog lists: put the real numbers in `prices` and
+# they replace whatever the catalog resolved for that model.
+- insert:
+    - id: stats
+      name: '@d0nj/dsh-stats'
+      config:
+        catalogUrl: https://models.dev/api.json
+        catalogTtlMinutes: 360
+        topSessions: 12
+        prices: {}

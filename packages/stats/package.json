@@ -1,0 +1,80 @@
+{
+  "name": "@d0nj/dsh-stats",
+  "version": "0.1.0",
+  "description": "Token spend for the DeepSeek Harness: a sidebar page that totals input, cached input and output tokens across every stored Session.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/d0nj/dsh-plugins.git",
+    "directory": "packages/stats"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "tokens",
+    "usage",
+    "stats"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./client": "./dist/client/client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "dist/client/client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/stamp-client.mjs",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit",
+    "pretest": "tsc -p tsconfig.test.json",
+    "test": "node --test \"dist-test/**/*.test.js\"",
+    "check": "node --check dist/index.js && node --check dist/client/client.js && node --check dist/pricing.js && node --check dist/summary.js && node --check dist/tokens.js",
+    "clean": "node -e \"const fs=require('node:fs');for(const d of ['dist','dist-test'])fs.rmSync(d,{recursive:true,force:true})\""
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-host-webserver": "^0.2.2-rc.5",
+    "@deepseek-ai/dsh-session-projection-cache": "^0.2.2-rc.5",
+    "@deepseek-ai/dsh-session-query": "^0.2.2-rc.5",
+    "@deepseek-ai/schemastery": "~3.19.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-host-webserver": "^0.2.2-rc.5",
+    "@deepseek-ai/dsh-session-projection-cache": "^0.2.2-rc.5",
+    "@deepseek-ai/dsh-session-query": "^0.2.2-rc.5",
+    "@deepseek-ai/schemastery": "~3.19.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

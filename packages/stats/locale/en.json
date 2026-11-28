@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Token usage",
+    "description": "A sidebar page totalling input, cached input and output tokens across every stored Session, with a spend estimate priced from models.dev and per-model and per-session breakdowns."
+  }
+}
