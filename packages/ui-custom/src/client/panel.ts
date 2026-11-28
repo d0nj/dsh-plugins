@@ -190,9 +190,9 @@ function styles(): Record<string, Record<string, string | number>> {
       padding: '6px 0',
       borderBottom: '1px solid var(--dsw-alias-border-l1)',
     },
-    rowLabel: { display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 180px', minWidth: 120 },
+    rowLabel: { display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 140px', minWidth: 100 },
     input: {
-      width: 92,
+      width: 80,
       padding: '4px 6px',
       borderRadius: 'var(--d0nj-radius-sm, 4px)',
       border: '1px solid var(--dsw-alias-border-l1)',
@@ -211,8 +211,13 @@ function styles(): Record<string, Record<string, string | number>> {
       font: 'inherit',
       fontSize: 12,
     },
-    fontRow: { gap: 18 },
-    combo: { position: 'relative', flex: '1 1 220px', minWidth: 140 },
+    fontRow: {
+      display: 'grid',
+      gridTemplateColumns: 'minmax(110px, 150px) minmax(140px, 1fr) auto',
+      gap: 12,
+      alignItems: 'center',
+    },
+    combo: { position: 'relative', minWidth: 0 },
     slider: { flex: '1 1 180px', minWidth: 120, cursor: 'pointer' },
     listbox: {
       position: 'absolute',
