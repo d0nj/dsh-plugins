@@ -63,9 +63,3 @@ Merge to `main`; the commit messages decide the release. [`.github/workflows/pub
 - npm authentication prefers OIDC trusted publishing. A package that does not exist on npm cannot be created that way, so add an `NPM_TOKEN` repository secret (`gh secret set NPM_TOKEN`) if the bot should create a new package; otherwise its first version needs one manual publish.
 - Keep the workflow filename `publish.yml`: npm trusted publishers are configured against it.
 - A push that only touches root files (docs, CI, this driver) releases nothing. Run `pnpm release:dry` with a `GITHUB_TOKEN` to preview what a push would release.
-
-## Dependency updates
-
-[`.github/renovate.json5`](.github/renovate.json5) groups the Harness packages into a single "DeepSeek Harness" pull request and rewrites `peerDependencies` together with `devDependencies`. That pairing matters: the Host refuses to load a bundle whose declared `dsh-*` peers do not satisfy its own version, and [Dependabot does not update `peerDependencies`](https://github.com/dependabot/dependabot-core/issues/1242) at all.
-
-The config only runs once the [Renovate app](https://github.com/apps/renovate) is installed on this repository. Merging the PR releases a patch for every package it touched; its `fix(deps): ...` commit is the release trigger.
