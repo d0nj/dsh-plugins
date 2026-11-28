@@ -2,23 +2,26 @@
 
 A collection of [Cordis](https://cordis.js.org) bundles for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), managed as a Turborepo monorepo.
 
-Each package is a `dsh` bundle: it declares `dsh.bundle.patch` in its `package.json`, and installing it adds plugin rows to a profile. The Harness loads built JavaScript from `dist/`, so the TypeScript here is compiled before installation.
+Each package is a `dsh` bundle: it declares `dsh.bundle.patch` in its `package.json`, and installing it adds rows to a profile. The Harness loads built JavaScript from `dist/`, so the TypeScript here is compiled before installation.
 
 ## Packages
 
 | Package | What it adds |
 |---|---|
-| [`@d0nj/dsh-websearch-multi`](packages/websearch-multi) | Thirteen `web_search` backends and four `web_fetch` backends behind the existing `ctx.web` seam. |
-| [`@d0nj/dsh-ui-custom`](packages/ui-custom) | Theme presets, colour tokens, typography and geometry for the Web UI, with a live editor. |
+| [`@d0nj/dsh-websearch-multi`](packages/websearch-multi) | Thirteen `web_search` backends, four `web_fetch` backends and three combo providers behind the existing `ctx.web` seam. |
+| [`@d0nj/dsh-ui-custom`](packages/ui-custom) | Thirty light/dark theme presets, colour tokens, typography and radius/density geometry for the Web UI, edited live in a Theme Studio settings panel. |
 | [`@d0nj/dsh-git-bash`](packages/git-bash) | A working `bash` tool on Windows, backed by Git Bash, beside the shipped `pwsh` tool. |
-| [`@d0nj/dsh-agent-rules`](packages/agent-rules) | `AGENTS.md` as binding system-prompt sections, replacing the advisory reminder that agents can talk themselves out of. |
-| [`@d0nj/dsh-browser`](packages/browser) | A real Chrome window for the agent: the `browser` tool opens pages, reads them as numbered accessibility outlines, and clicks, types and scrolls by ref. |
-| [`@d0nj/dsh-init`](packages/init) | The `/init` command: surveys the repository and writes or refreshes its `AGENTS.md`. |
+| [`@d0nj/dsh-agent-rules`](packages/agent-rules) | `AGENTS.md`, `CLAUDE.md` and `*.local.md` as binding system-prompt sections, replacing the advisory reminder that agents can talk themselves out of. |
+| [`@d0nj/dsh-browser`](packages/browser) | A headless-by-default Chromium the agent drives through the `browser` tool: pages read as numbered accessibility outlines, then clicked, typed and scrolled by ref. |
+| [`@d0nj/dsh-init`](packages/init) | The `/init` command: queues a repository-survey brief so the agent writes or refreshes its `AGENTS.md`. |
+| [`@d0nj/dsh-stats`](packages/stats) | A **Token usage** page in the sidebar: lifetime input, cache-read, cache-write and output totals across every Session, with charts and a models.dev spend estimate. |
+| [`@d0nj/dsh-narration`](packages/narration) | Each assistant step rendered in the chat as frame-paced reasoning and tool rows, plus a system-prompt rule for one-line intent and batched reads. |
+| [`@d0nj/dsh-codemode`](packages/codemode) | A `run_code` tool and Codemode preset: one TypeScript program composes the other tools through `tools.*`, with `catalog.search`/`describe` for the rest. |
 
 ## Requirements
 
 - Node.js 22 or newer
-- pnpm 12
+- pnpm 12.8.2
 - A `dsh` installation on `PATH`
 
 ## Working in the repo
@@ -37,7 +40,7 @@ pnpm clean            # remove dist/ and dist-test/
 ## Adding a plugin
 
 1. `packages/<name>/` with a `package.json` declaring `dsh.bundle.patch`, plus `cordis.patch.yml`, `locale/en.json`, and `icon.svg`.
-2. `src/index.ts` exporting `apply`, and optionally `Config` / `inject`.
+2. `src/index.ts` exporting `name`, `inject`, `Config`, and either `apply(ctx, config)` or a service class the Host constructs.
 3. `tsconfig.build.json` extending `../../tsconfig.base.json`.
 4. `pnpm install`, `pnpm build`, then install it into a profile.
 

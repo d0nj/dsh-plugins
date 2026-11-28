@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Turborepo monorepo of [Cordis](https://cordis.js.org) bundles ("dsh plugins") for DeepSeek Harness. Each package is a bundle: `package.json` declares `dsh.bundle.patch` → `cordis.patch.yml`, which inserts plugin rows into a dsh profile. The Harness loads compiled JS from `dist/`, never `src/`.
+Turborepo monorepo of [Cordis](https://cordis.js.org) bundles ("dsh plugins") for DeepSeek Harness. Each package is a bundle: `package.json` declares `dsh.bundle.patch` → `cordis.patch.yml`, which inserts rows into a dsh profile. The Harness loads compiled JS from `dist/`, never `src/`.
 
-| Package | Dir | Its guidelines |
+| Package | Dir | Read first |
 |---|---|---|
 | `@d0nj/dsh-websearch-multi` | `packages/websearch-multi` | [`packages/websearch-multi/AGENTS.md`](packages/websearch-multi/AGENTS.md) |
 | `@d0nj/dsh-ui-custom` | `packages/ui-custom` | [`packages/ui-custom/AGENTS.md`](packages/ui-custom/AGENTS.md) |
@@ -12,6 +12,9 @@ Turborepo monorepo of [Cordis](https://cordis.js.org) bundles ("dsh plugins") fo
 | `@d0nj/dsh-agent-rules` | `packages/agent-rules` | [`packages/agent-rules/AGENTS.md`](packages/agent-rules/AGENTS.md) |
 | `@d0nj/dsh-browser` | `packages/browser` | [`packages/browser/AGENTS.md`](packages/browser/AGENTS.md) |
 | `@d0nj/dsh-init` | `packages/init` | [`packages/init/AGENTS.md`](packages/init/AGENTS.md) |
+| `@d0nj/dsh-stats` | `packages/stats` | [`packages/stats/AGENTS.md`](packages/stats/AGENTS.md) |
+| `@d0nj/dsh-narration` | `packages/narration` | [`packages/narration/AGENTS.md`](packages/narration/AGENTS.md) |
+| `@d0nj/dsh-codemode` | `packages/codemode` | [`packages/codemode/README.md`](packages/codemode/README.md) |
 
 Read the package file before touching that package's `src/`. This file covers only what is shared.
 
@@ -22,16 +25,16 @@ pnpm-workspace.yaml (packages/*)
   → turbo run <task>            task graph, dist/** cached
   → package: tsc -p tsconfig.build.json → dist/
   → Harness: dsh.bundle.patch → cordis.patch.yml → profile rows
-  → Harness loader: package.json main = dist/index.js → name / inject / Config / apply(ctx, config)
+  → Harness loader: package.json main = dist/index.js → apply(ctx, config), or a service class
 ```
 
 Three layers every plugin follows:
 
-1. **Manifest** — `dsh.bundle.patch` (every package) and `dsh.client` (browser half, ui-custom only).
-2. **Host entry** `src/index.ts` — exports `name` (bare directory name), `inject`, `Config` (schemastery), `apply(ctx, config)` returning a disposer.
+1. **Manifest** — `dsh.bundle.patch` (every package) and `dsh.client` (browser half: ui-custom, narration, stats).
+2. **Host entry** `src/index.ts` — `name` (bare directory name), `inject`, `Config` (schemastery), and either `apply(ctx, config)` returning a disposer or, in `git-bash` only, a default-exported service class whose static `Config` holds the schema.
 3. **Seam usage** — obtain capabilities from `ctx` only (`ctx.web`, `ctx.logger(name)`, `ctx.get('credentials')`, `ctx.effect`); `inject` guarantees their presence.
 
-`apply` never throws on bad user config: validate cross-field constraints, `logger.warn`/`logger.error`, skip that row. The Host runs in-process, so a module change needs a Harness restart.
+No entry throws on bad user config: validate cross-field constraints, `logger.warn`/`logger.error`, skip that row. The Host runs in-process, so a module change needs a Harness restart.
 
 ### Patch files
 
@@ -43,7 +46,7 @@ Three layers every plugin follows:
 
 ```
 packages/<name>/
-  src/index.ts            plugin entry (name/inject/Config/apply)
+  src/index.ts            plugin entry (apply, or a service class)
   src/*.test.ts           node:test suites, co-located
   cordis.patch.yml        profile rows
   locale/{en,zh}.json     meta.title / meta.description only (no i18n calls in src)
@@ -51,6 +54,7 @@ packages/<name>/
   tsconfig.build.json     → dist/   (excludes *.test.ts)
   tsconfig.test.json      → dist-test/ (includes everything, for tests)
   tsconfig.json           editor-only (--noEmit), referenced by no script
+  scripts/stamp-client.mjs  client packages only; build runs it after tsc
 scripts/                  repo-level tooling (release target resolver)
 .github/workflows/        ci.yml (verify), publish.yml (version bump → npm)
 ```
@@ -59,7 +63,7 @@ scripts/                  repo-level tooling (release target resolver)
 
 ```bash
 pnpm install             # workspace + real Harness type packages
-pnpm build               # tsc → dist/
+pnpm build               # tsc → dist/; client packages then run scripts/stamp-client.mjs
 pnpm typecheck           # tsc -p tsconfig.test.json --noEmit
 pnpm test                # pretest compiles dist-test/, then node --test
 pnpm check               # node --check on emitted entry points
@@ -98,7 +102,7 @@ Turbo caching:
 - `skipLibCheck` is required: Harness `.d.ts` reference peer types they don't declare.
 
 **Naming**
-- Dir kebab-case; npm `@d0nj/dsh-<dir>`; plugin `name` export and patch row `id` = bare dir name.
+- Dir kebab-case; npm `@d0nj/dsh-<dir>`; patch row `id` = bare dir name, as is the `name` export where the entry has one.
 - Declarative catalogs: `SEARCH_ADAPTERS`, `FETCH_ADAPTERS`, `PRESETS`, `TOKEN_SPECS` keyed by id, plus `*_IDS` arrays and `is*Id()` guards.
 - Tests `src/<subject>.test.ts`; commit scopes use the package directory name (`feat(websearch-multi): …`).
 
@@ -129,7 +133,7 @@ Turbo caching:
 - Turborepo for ordering/caching only: no project references, no `tsc -b`; `tsBuildInfoFile` is inert (nothing sets `incremental`/`composite`).
 - Harness peers follow the runtime line (`@deepseek-ai/cordis ~4.1.0`, `schemastery ~3.19.0`, `dsh-* ^0.2.2-rc.5`) and are **duplicated into `devDependencies`** so `pnpm install` supplies real types. Keep both lists identical. Keep each `dsh-*` range inside the running Harness minor line: the Host skips any bundle whose declared `dsh-*` peers do not satisfy its own version, so an exact pin silently disables every plugin on the next Harness release.
 - No runtime third-party dependencies: Node globals (`fetch`, `URL`, `AbortSignal`) only.
-- Secrets live in the dsh credential store, never files. `.gitignore`'s last line fuses two patterns (`.env.local*.tgz`), so `*.tgz` and `.env.local` are *not* ignored.
+- Secrets live in the dsh credential store, never files. `.gitignore` fuses two patterns into one token (`.env.local*.tgz`), so `*.tgz` and `.env.local` are *not* ignored.
 - Release: bump the package's `version` and merge to `main`; `publish.yml` publishes any manifest version the registry lacks and then creates the `<name>@<version>` tag. Pushing that tag by hand still releases. The first publish of a **new** package must be manual (trusted publishing cannot create a package).
 - Dependency updates come from Renovate, grouped as one `DeepSeek Harness` PR: it rewrites `peerDependencies` and `devDependencies` together, which Dependabot cannot do (dependabot-core#1242). Bump the package version in that PR; merging publishes it.
 
