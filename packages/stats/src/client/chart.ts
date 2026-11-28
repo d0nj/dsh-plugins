@@ -20,6 +20,14 @@ export interface Arc {
   circumference: number
 }
 
+/** A slice widened to a usable pointer target. */
+export interface HitZone {
+  key: string
+  value: number
+  from: number
+  to: number
+}
+
 const usable = (value: number): boolean => Number.isFinite(value) && value > 0
 
 /**
@@ -75,4 +83,26 @@ export function columnHeights(values: readonly number[], height: number): number
   const largest = values.reduce((max, value) => (usable(value) && value > max ? value : max), 0)
   if (largest <= 0 || height <= 0) return values.map(() => 0)
   return values.map((value) => (usable(value) ? (value / largest) * height : 0))
+}
+
+/**
+ * Widen each slice into a pointer target of at least `minWidth`, keeping it
+ * centred on the slice it stands for.
+ *
+ * A share of three tokens can be a two-pixel band, impossible to hit on purpose.
+ * Zones may overlap, so they are returned widest-first: painted in that order, the
+ * narrowest target sits on top and wins the overlap.
+ */
+export function hitZones(segments: readonly Segment[], minWidth: number): HitZone[] {
+  if (segments.length === 0) return []
+  const limit = Math.min(Math.max(minWidth, 0), 1 / segments.length)
+  const zones = segments.map((segment) => {
+    const width = Math.max(segment.to - segment.from, limit)
+    const center = (segment.from + segment.to) / 2
+    const from = Math.min(1 - width, Math.max(0, center - width / 2))
+    return { key: segment.key, value: segment.value, from, to: from + width, width }
+  })
+  return zones
+    .sort((left, right) => right.width - left.width)
+    .map((zone) => ({ key: zone.key, value: zone.value, from: zone.from, to: zone.to }))
 }

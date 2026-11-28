@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { columnHeights, donutArcs, fractions, groupSmall } from './chart.js'
+import { columnHeights, donutArcs, fractions, groupSmall, hitZones } from './chart.js'
 
 describe('fractions', () => {
   it('resolves items into contiguous shares of the whole', () => {
@@ -96,5 +96,62 @@ describe('columnHeights', () => {
 
   it('ignores negative and non-finite values', () => {
     assert.deepEqual(columnHeights([-5, 10, Number.NaN], 20), [0, 20, 0])
+  })
+})
+
+describe('hitZones', () => {
+  it('widens a sliver to the minimum and keeps it centred', () => {
+    const zones = hitZones(
+      fractions([
+        { key: 'big', value: 98 },
+        { key: 'sliver', value: 2 },
+      ]),
+      0.2,
+    )
+    const sliver = zones.find((zone) => zone.key === 'sliver')
+    assert.deepEqual(sliver, { key: 'sliver', value: 2, from: 0.8, to: 1 })
+  })
+
+  it('leaves a slice wider than the minimum alone', () => {
+    const zones = hitZones(
+      fractions([
+        { key: 'half', value: 1 },
+        { key: 'half', value: 1 },
+      ]),
+      0.1,
+    )
+    assert.deepEqual(zones.map((zone) => [zone.key, zone.from, zone.to]), [
+      ['half', 0, 0.5],
+      ['half', 0.5, 1],
+    ])
+  })
+
+  it('caps the minimum so every zone still fits in the whole', () => {
+    const segments = fractions([
+      { key: 'a', value: 1 },
+      { key: 'b', value: 1 },
+      { key: 'c', value: 1 },
+      { key: 'd', value: 1 },
+    ])
+    const zones = hitZones(segments, 0.9)
+    assert.equal(zones.length, 4)
+    assert.ok(zones.every((zone) => zone.from >= 0 && zone.to <= 1))
+    assert.ok(zones.every((zone) => zone.to - zone.from <= 0.25 + 1e-9))
+  })
+
+  it('orders the widest zone first so the narrowest target paints last', () => {
+    const zones = hitZones(
+      fractions([
+        { key: 'dominant', value: 90 },
+        { key: 'tiny', value: 5 },
+        { key: 'also-tiny', value: 5 },
+      ]),
+      0.2,
+    )
+    assert.equal(zones[0]?.key, 'dominant')
+  })
+
+  it('has nothing to widen without slices', () => {
+    assert.deepEqual(hitZones([], 0.2), [])
   })
 })

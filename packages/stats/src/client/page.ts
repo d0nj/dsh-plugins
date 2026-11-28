@@ -1,5 +1,5 @@
 import type { DayRow, ModelRow, SessionRow, StatsPayload } from '../summary.js'
-import { columnHeights, donutArcs, fractions, groupSmall } from './chart.js'
+import { columnHeights, donutArcs, fractions, groupSmall, hitZones } from './chart.js'
 import { formatBasis, formatDate, formatDayLabel, formatModel, formatMoment, formatPercent, formatPrice, formatTokens, formatUsd } from './format.js'
 
 /** The slice of React a client half receives from the module envelope. */
@@ -11,6 +11,12 @@ export interface ReactApi {
 
 /** A node the shell can render. */
 export type Node = unknown
+
+/** The pointer fields the time chart reads to map a cursor to a day. */
+interface PointerLike {
+  clientX: number
+  currentTarget: { getBoundingClientRect(): { left: number; width: number } }
+}
 
 const ROUTE = 'd0nj-stats/summary'
 
@@ -190,56 +196,108 @@ export function createStatsPage(React: ReactApi): () => Node {
     )
   }
 
-  const MixBar = (props: { values: readonly number[]; height: number; round: boolean }): Node => {
+  const MixBar = (props: { values: readonly number[]; height: number; round: boolean; legend: boolean }): Node => {
     const [hover, setHover] = React.useState<string | undefined>(undefined)
     const total = props.values.reduce((sum, value) => sum + (Number.isFinite(value) && value > 0 ? value : 0), 0)
     const segments = fractions(CLASS_SERIES.map((series, index) => ({ key: series.key, value: props.values[index] ?? 0 })))
     const active = segments.find((segment) => segment.key === hover)
     const activeClass = CLASS_SERIES.find((series) => series.key === hover)
     const radius = props.round ? props.height / 2 : 3
-    if (segments.length === 0) {
-      return h('div', { style: { height: props.height + 'px', borderRadius: radius + 'px', background: COLOR_LINE } })
-    }
+    const clear = (): void => setHover(undefined)
+    const bar =
+      segments.length === 0
+        ? h('div', { style: { height: props.height + 'px', borderRadius: radius + 'px', background: COLOR_LINE } })
+        : h(
+            'div',
+            {
+              style: {
+                display: 'flex',
+                height: props.height + 'px',
+                width: '100%',
+                overflow: 'hidden',
+                borderRadius: radius + 'px',
+                background: COLOR_LINE,
+              },
+            },
+            ...segments.map((segment) => {
+              const series = CLASS_SERIES.find((candidate) => candidate.key === segment.key)
+              return h('div', {
+                key: segment.key,
+                style: {
+                  width: (segment.to - segment.from) * 100 + '%',
+                  background: series?.color ?? COLOR_MUTED,
+                  borderRight: '1px solid ' + COLOR_SURFACE,
+                  filter: hover !== undefined && hover !== segment.key ? 'brightness(0.7)' : undefined,
+                },
+              })
+            }),
+          )
     return h(
       'div',
-      { style: { position: 'relative', width: '100%' } },
+      { style: { display: 'flex', flexDirection: 'column', gap: '10px' } },
       h(
         'div',
-        {
-          style: {
-            display: 'flex',
-            height: props.height + 'px',
-            width: '100%',
-            overflow: 'hidden',
-            borderRadius: radius + 'px',
-            background: COLOR_LINE,
-          },
-        },
-        ...segments.map((segment) => {
-          const series = CLASS_SERIES.find((candidate) => candidate.key === segment.key)
-          return h('div', {
-            key: segment.key,
-            onMouseEnter: () => setHover(segment.key),
-            onMouseLeave: () => setHover(undefined),
-            style: {
-              width: (segment.to - segment.from) * 100 + '%',
-              background: series?.color ?? COLOR_MUTED,
-              borderRight: '1px solid ' + COLOR_SURFACE,
-              filter: hover !== undefined && hover !== segment.key ? 'brightness(0.7)' : undefined,
-            },
-          })
-        }),
-      ),
-      active === undefined || activeClass === undefined
-        ? null
-        : tipCard(
-            activeClass.label,
-            [
-              formatTokens(active.value) + ' tokens',
-              formatPercent(active.to - active.from) + ' of ' + formatTokens(total),
-            ],
-            ((active.from + active.to) / 2) * 100,
+        { style: { position: 'relative', width: '100%' } },
+        bar,
+        h(
+          'div',
+          { style: { position: 'absolute', left: 0, right: 0, top: '-9px', bottom: '-9px' } },
+          ...hitZones(segments, 0.05).map((zone) =>
+            h('div', {
+              key: zone.key,
+              onMouseEnter: () => setHover(zone.key),
+              onMouseLeave: clear,
+              style: {
+                position: 'absolute',
+                left: zone.from * 100 + '%',
+                width: (zone.to - zone.from) * 100 + '%',
+                top: 0,
+                bottom: 0,
+              },
+            }),
           ),
+        ),
+        active === undefined || activeClass === undefined
+          ? null
+          : tipCard(
+              activeClass.label,
+              [formatTokens(active.value) + ' tokens', formatPercent(active.to - active.from) + ' of ' + formatTokens(total)],
+              ((active.from + active.to) / 2) * 100,
+            ),
+      ),
+      props.legend
+        ? h(
+            'div',
+            { style: { display: 'flex', flexWrap: 'wrap', gap: '2px 14px' } },
+            ...CLASS_SERIES.map((series, index) => {
+              const value = props.values[index] ?? 0
+              return h(
+                'div',
+                {
+                  key: series.key,
+                  onMouseEnter: () => setHover(series.key),
+                  onMouseLeave: clear,
+                  style: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '11px',
+                    padding: '2px 0',
+                    cursor: 'default',
+                    opacity: hover === undefined || hover === series.key ? 1 : 0.55,
+                  },
+                },
+                swatch(series.color),
+                h('span', { style: { color: COLOR_LABEL } }, series.label),
+                h(
+                  'span',
+                  { style: { color: COLOR_MUTED, fontVariantNumeric: 'tabular-nums' } },
+                  formatTokens(value) + ' · ' + formatPercent(total > 0 ? value / total : 0),
+                ),
+              )
+            }),
+          )
+        : null,
     )
   }
 
@@ -290,11 +348,25 @@ export function createStatsPage(React: ReactApi): () => Node {
             rx: 1.5,
             fill: COLOR_ACCENT,
             opacity: hover === day.date ? 1 : dimmed ? 0.28 : index === days.length - 1 ? 1 : 0.6,
-            onMouseEnter: () => setHover(day.date),
-            onMouseLeave: () => setHover(undefined),
           })
         }),
         h('line', { x1: 0, y1: height - 3, x2: width, y2: height - 3, stroke: COLOR_LINE, strokeWidth: 1 }),
+        h('rect', {
+          x: 0,
+          y: 0,
+          width,
+          height,
+          fill: 'transparent',
+          pointerEvents: 'all',
+          onMouseMove: (event: PointerLike) => {
+            const box = event.currentTarget.getBoundingClientRect()
+            const ratio = box.width > 0 ? (event.clientX - box.left) / box.width : 0
+            const index = Math.min(days.length - 1, Math.max(0, Math.floor(ratio * days.length)))
+            const day = days[index]
+            setHover(day === undefined ? undefined : day.date)
+          },
+          onMouseLeave: () => setHover(undefined),
+        }),
       ),
       h(
         'div',
@@ -341,6 +413,20 @@ export function createStatsPage(React: ReactApi): () => Node {
               strokeDasharray: arc.length + ' ' + Math.max(0, arc.circumference - arc.length),
               strokeDashoffset: -arc.offset,
               opacity: hover === undefined || hover === arc.key ? 1 : 0.35,
+            }),
+          ),
+          ...donutArcs(hitZones(segments, 0.04), 56).map((arc) =>
+            h('circle', {
+              key: 'hit-' + arc.key,
+              cx: 80,
+              cy: 80,
+              r: 56,
+              fill: 'none',
+              stroke: 'transparent',
+              strokeWidth: 26,
+              strokeDasharray: arc.length + ' ' + Math.max(0, arc.circumference - arc.length),
+              strokeDashoffset: -arc.offset,
+              pointerEvents: 'all',
               onMouseEnter: () => setHover(arc.key),
               onMouseLeave: () => setHover(undefined),
             }),
@@ -384,21 +470,6 @@ export function createStatsPage(React: ReactApi): () => Node {
       ),
     )
   }
-
-  const legend = (entries: readonly { color: string; label: string; value: string }[]): Node =>
-    h(
-      'div',
-      { style: { display: 'flex', flexWrap: 'wrap', gap: '6px 16px' } },
-      ...entries.map((entry) =>
-        h(
-          'div',
-          { key: entry.label, style: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: COLOR_MUTED } },
-          swatch(entry.color),
-          h('span', { style: { color: COLOR_LABEL } }, entry.label),
-          h('span', { style: { fontVariantNumeric: 'tabular-nums' } }, entry.value),
-        ),
-      ),
-    )
 
   const table = <T,>(
     columns: readonly string[],
@@ -546,14 +617,7 @@ export function createStatsPage(React: ReactApi): () => Node {
         h(
           'div',
           { style: { display: 'flex', flexDirection: 'column', gap: '10px' } },
-          h(MixBar, { values: mix, height: 12, round: true }),
-          legend(
-            CLASS_SERIES.map((series, index) => ({
-              color: series.color,
-              label: series.label,
-              value: formatTokens(mix[index] ?? 0) + ' · ' + formatPercent(totalTokens > 0 ? (mix[index] ?? 0) / totalTokens : 0),
-            })),
-          ),
+          h(MixBar, { values: mix, height: 12, round: true, legend: true }),
         ),
       ),
       h(
