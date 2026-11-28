@@ -46,6 +46,10 @@ jobs:
           node-version: 22.14.0
           cache: pnpm
 
+      # Trusted publishing needs npm 11.5.1 or later; the Node 22.14 image ships npm 10.
+      - name: Upgrade npm for trusted publishing
+        run: npm install --global npm@11
+
       - name: Install
         run: pnpm install --frozen-lockfile
 
