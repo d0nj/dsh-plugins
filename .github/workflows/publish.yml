@@ -23,7 +23,7 @@ permissions:
 jobs:
   release:
     name: Release
-    runs-on: instabox-medium
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       issues: write
