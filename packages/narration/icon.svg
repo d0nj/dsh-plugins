@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Live Narration">
+  <defs>
+    <linearGradient id="live" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#34d399"/>
+      <stop offset="0.55" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#3f8cff"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="12" fill="none" stroke="url(#live)" stroke-width="2.6"/>
+  <g stroke="url(#live)" stroke-width="2.8" stroke-linecap="round" fill="none">
+    <line x1="16" y1="22" x2="48" y2="22" opacity="0.4"/>
+    <line x1="16" y1="32" x2="42" y2="32" opacity="0.7"/>
+    <line x1="16" y1="42" x2="28" y2="42"/>
+  </g>
+  <rect x="31.5" y="36.5" width="4" height="11" rx="1.4" fill="url(#live)"/>
+</svg>

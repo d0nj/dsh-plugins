@@ -1,0 +1,7 @@
+- insert:
+    - id: narration
+      name: '@d0nj/dsh-narration'
+      config:
+        intentLine: true
+        parallelReads: true
+        intentWords: 24

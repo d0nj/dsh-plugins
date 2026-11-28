@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Live Narration",
+    "description": "Keep the agent's work on screen while it happens: a streaming reasoning tail, tool calls with arguments still being written, elapsed time and throughput, plus a prompt rule that makes the agent state its intent before every action."
+  }
+}
