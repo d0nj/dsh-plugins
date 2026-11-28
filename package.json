@@ -25,10 +25,14 @@
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
+    "release": "node scripts/release.mjs",
+    "release:dry": "node scripts/release.mjs --dry-run --no-ci",
     "dev:websearch-multi": "turbo run build --filter=@d0nj/dsh-websearch-multi"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "semantic-release": "25.0.9",
+    "semantic-release-monorepo": "8.0.2",
     "turbo": "^2.11.10",
     "typescript": "^5.9.0"
   }

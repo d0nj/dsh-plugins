@@ -56,12 +56,16 @@ A linked directory install picks up rebuilt files, but the Host runs in-process,
 
 ## Releasing
 
-Bump the package's `version` in `package.json` and merge to `main`. The publish workflow then verifies the workspace, uploads every manifest version the npm registry does not have yet, and creates the matching `<package>@<version>` tag. Pushing that tag by hand still works, and a push carrying no new version publishes nothing.
+Merge to `main`; the commit messages decide the release. [`.github/workflows/publish.yml`](.github/workflows/publish.yml) runs [`scripts/release.mjs`](scripts/release.mjs), which runs [semantic-release](https://semantic-release.gitbook.io/semantic-release/) once per package. Commits are attributed by the files they touched, each package versions independently from its own `<package>@<version>` tag, and the release is published to npm and opened on GitHub. Never edit a version by hand.
 
-Publishing uses npm OIDC trusted publishing, so no registry token is stored here. The first version of a new package still has to be published once by hand, because trusted publishing cannot create a package.
+- `fix(...)` releases a patch, `feat(...)` a minor, and a `BREAKING CHANGE:` footer a major.
+- Scope the commit to the package it changes (`feat(ui-custom): ...`); a commit touching several packages releases each of them.
+- npm authentication prefers OIDC trusted publishing. A package that does not exist on npm cannot be created that way, so add an `NPM_TOKEN` repository secret (`gh secret set NPM_TOKEN`) if the bot should create a new package; otherwise its first version needs one manual publish.
+- Keep the workflow filename `publish.yml`: npm trusted publishers are configured against it.
+- A push that only touches root files (docs, CI, this driver) releases nothing. Run `pnpm release:dry` with a `GITHUB_TOKEN` to preview what a push would release.
 
 ## Dependency updates
 
 [`.github/renovate.json5`](.github/renovate.json5) groups the Harness packages into a single "DeepSeek Harness" pull request and rewrites `peerDependencies` together with `devDependencies`. That pairing matters: the Host refuses to load a bundle whose declared `dsh-*` peers do not satisfy its own version, and [Dependabot does not update `peerDependencies`](https://github.com/dependabot/dependabot-core/issues/1242) at all.
 
-The config only runs once the [Renovate app](https://github.com/apps/renovate) is installed on this repository. Bump the package version in the pull request it opens; merging publishes the release.
+The config only runs once the [Renovate app](https://github.com/apps/renovate) is installed on this repository. Merging the PR releases a patch for every package it touched; its `fix(deps): ...` commit is the release trigger.

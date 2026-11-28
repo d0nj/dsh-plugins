@@ -55,8 +55,8 @@ packages/<name>/
   tsconfig.test.json      → dist-test/ (includes everything, for tests)
   tsconfig.json           editor-only (--noEmit), referenced by no script
   scripts/stamp-client.mjs  client packages only; build runs it after tsc
-scripts/                  repo-level tooling (release target resolver)
-.github/workflows/        ci.yml (verify), publish.yml (version bump → npm)
+scripts/                  repo-level tooling (semantic-release driver)
+.github/workflows/        ci.yml (verify), publish.yml (semantic-release → npm)
 ```
 
 ## Development Commands
@@ -69,6 +69,8 @@ pnpm test                # pretest compiles dist-test/, then node --test
 pnpm check               # node --check on emitted entry points
 pnpm clean               # rm dist/ dist-test/
 pnpm exec turbo run build typecheck test check   # exactly what CI runs
+pnpm release:dry         # semantic-release dry run for every package (needs GITHUB_TOKEN)
+pnpm release             # release every changed package; publish.yml runs this
 ```
 
 Per package:
@@ -121,9 +123,9 @@ Turbo caching:
 | `tsconfig.base.json` | compiler truth; `globalDependencies` in turbo |
 | `turbo.json` | task graph: `test`/`check` depend on `build`, `typecheck` on `^build` |
 | `pnpm-workspace.yaml` | `packages/*` only — no `workspaces` field, so npm/yarn won't link |
-| `scripts/resolve-release-tag.mjs` | tag → publish matrix; rejects version mismatch and tags not on `origin/main` |
+| `scripts/release.mjs` | runs semantic-release once per public package, each with its own `<name>@<version>` tag format |
 | `.github/workflows/ci.yml` | `turbo run build typecheck test check` + `pnpm pack --dry-run` per non-private package |
-| `.github/workflows/publish.yml` | publishes a version the registry lacks, then tags it; npm OIDC trusted publishing |
+| `.github/workflows/publish.yml` | semantic-release on `main`: version from Conventional Commits, tag, GitHub release, npm upload; OIDC trusted publishing with an optional `NPM_TOKEN` |
 | `.github/renovate.json5` | grouped `DeepSeek Harness` updates: rewrites `peerDependencies` and `devDependencies` together |
 
 ## Runtime / Tooling Preferences
@@ -134,8 +136,10 @@ Turbo caching:
 - Harness peers follow the runtime line (`@deepseek-ai/cordis ~4.1.0`, `schemastery ~3.19.0`, `dsh-* ^0.2.2-rc.5`) and are **duplicated into `devDependencies`** so `pnpm install` supplies real types. Keep both lists identical. Keep each `dsh-*` range inside the running Harness minor line: the Host skips any bundle whose declared `dsh-*` peers do not satisfy its own version, so an exact pin silently disables every plugin on the next Harness release.
 - No runtime third-party dependencies: Node globals (`fetch`, `URL`, `AbortSignal`) only.
 - Secrets live in the dsh credential store, never files. `.gitignore` fuses two patterns into one token (`.env.local*.tgz`), so `*.tgz` and `.env.local` are *not* ignored.
-- Release: bump the package's `version` and merge to `main`; `publish.yml` publishes any manifest version the registry lacks and then creates the `<name>@<version>` tag. Pushing that tag by hand still releases. The first publish of a **new** package must be manual (trusted publishing cannot create a package).
-- Dependency updates come from Renovate, grouped as one `DeepSeek Harness` PR: it rewrites `peerDependencies` and `devDependencies` together, which Dependabot cannot do (dependabot-core#1242). Bump the package version in that PR; merging publishes it.
+- Release: merging to `main` releases, driven by Conventional Commits. `publish.yml` runs `scripts/release.mjs`, which runs semantic-release per package with `semantic-release-monorepo`: only commits touching a package's files count, versions come from each package's `<name>@<version>` tags, and the GitHub release plus npm upload follow. Never bump a version by hand.
+- Tag format is `<name>@<version>` for every package, and the workflow filename `publish.yml` is the trusted publisher registered on npm, so do not rename it.
+- A package that does not exist on npm cannot be created through OIDC trusted publishing: its first version needs either one manual publish or the `NPM_TOKEN` secret. semantic-release starts a package at `1.0.0` when no tag exists, so backfill a `<name>@<version>` tag when a published version predates the bot.
+- Dependency updates come from Renovate, grouped as one `DeepSeek Harness` PR: it rewrites `peerDependencies` and `devDependencies` together, which Dependabot cannot do (dependabot-core#1242). Its `fix(deps): ...` commit releases a patch for every package the PR touched; no version bump is needed.
 
 ## Testing & QA
 

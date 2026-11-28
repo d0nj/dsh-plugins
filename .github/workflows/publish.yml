@@ -1,16 +1,16 @@
 name: Publish
 
-# Publishes the manifest version from either a pushed `<package>@<version>` tag or
-# a push to `main` carrying a version npm lacks; the branch path tags after the
-# upload. OIDC trusted publishing keeps no token here, and a new package's first
-# version still needs one manual publish. The trusted publisher is `publish.yml`.
-
+# semantic-release derives the version from Conventional Commits on main, then
+# tags, releases on GitHub, and publishes to npm. Each package runs from its own
+# directory, so commits are attributed by the files they touched and every
+# package versions independently from its own <package>@<version> tags.
+#
+# npm authentication prefers OIDC trusted publishing. Set an NPM_TOKEN secret
+# only to allow the first publish of a package that does not exist on npm yet,
+# which trusted publishing cannot create.
 on:
   push:
     branches: [main]
-    tags:
-      - '@*/*@*'
-      - '*@*'
   workflow_dispatch:
 
 concurrency:
@@ -19,15 +19,16 @@ concurrency:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  resolve:
-    name: Resolve targets
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.resolve.outputs.matrix }}
-      has-packages: ${{ steps.resolve.outputs.has-packages }}
+  release:
+    name: Release
+    runs-on: instabox-medium
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -43,46 +44,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22.14.0
-
-      - name: Resolve the targets
-        id: resolve
-        env:
-          EVENT: ${{ github.event_name }}
-          REF_TYPE: ${{ github.ref_type }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          if [ "$EVENT" = "push" ] && [ "$REF_TYPE" = "tag" ]; then
-            node scripts/resolve-release-tag.mjs --tag "$TAG"
-          else
-            node scripts/resolve-release-tag.mjs --unpublished
-          fi
-
-  publish:
-    name: Publish ${{ matrix.name }}@${{ matrix.version }}
-    needs: resolve
-    if: needs.resolve.outputs.has-packages == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.resolve.outputs.matrix) }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Use pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 12.8.2
-
-      - name: Use Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 22.14.0
-          package-manager-cache: false
-          registry-url: https://registry.npmjs.org
+          cache: pnpm
 
       - name: Install
         run: pnpm install --frozen-lockfile
@@ -90,17 +52,8 @@ jobs:
       - name: Verify
         run: pnpm exec turbo run build typecheck test check
 
-      - name: Publish ${{ matrix.name }}@${{ matrix.version }}
-        working-directory: ${{ matrix.dir }}
-        run: pnpm publish --access public --no-git-checks
-
-      - name: Tag ${{ matrix.name }}@${{ matrix.version }}
+      - name: Release
+        run: pnpm run release
         env:
-          TAG: ${{ matrix.name }}@${{ matrix.version }}
-        run: |
-          if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
-            echo "tag $TAG already exists"
-          else
-            git tag "$TAG"
-            git push origin "refs/tags/$TAG"
-          fi
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
